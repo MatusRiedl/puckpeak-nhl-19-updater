@@ -28,6 +28,19 @@ def tree(top):
     return out
 
 
+def patched(mods):
+    """tree(mods) without the state file's 'applied' time (whole seconds): two Patches a second apart that laid the
+    same files are the same patch (public CI 0.91.0 caught the test across a second's turn)."""
+    out = tree(mods)
+    path = os.path.join(mods, overlay.STATE_NAME)
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as f:
+            state = json.load(f)
+        state.pop('applied', None)
+        out[overlay.STATE_NAME] = json.dumps(state, sort_keys=True)
+    return out
+
+
 @pytest.fixture
 def game(tmp_path):
     """A game folder with two archives per family: the stock logo and portrait in the UI family (the portrait in the
@@ -312,13 +325,13 @@ def test_photos_switch_is_a_part_with_its_own_restore(game, tmp_path, monkeypatc
     off = patch.art_layer({'art': True, 'photos': False}, [], game_dir=game)
     assert [p.name for p in off] == ['looks'] and patch.art_found() == ['photos.zip', 'looks.zip']
     overlay.apply(game, ('art',), art=on, **IDLE)
-    with_photos = tree(mods)
+    with_photos = patched(mods)
     overlay.apply(game, ('art',), art=off, **IDLE)
-    after = tree(mods)
+    after = patched(mods)
     assert after != with_photos
     overlay.undo(game, **IDLE)
     overlay.apply(game, ('art',), art=off, **IDLE)
-    assert tree(mods) == after                   # the same files as a fresh patch without the photos
+    assert patched(mods) == after                # the same files as a fresh patch without the photos
     assert overlay.undo(game, **IDLE) and not os.path.exists(mods) and tree(game) == stock
 
 
