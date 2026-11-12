@@ -62,6 +62,13 @@ def test_view_reads_game_file_then_config_json_then_default(user):
     assert v['tabs'] == list(emusettings.TABS) and v['blocked'] == '' and v['path'] == str(_game_file(user))
 
 
+def test_frame_rate_set_by_hand_still_shows(user):
+    _write(user, {'GPU': {'vblank_frequency': 144}})
+    fps = _field(emusettings.view(str(user)), emusettings.FPS_ID)
+    assert fps['value'] == 144 and fps['options'][-1]['value'] == 144 and fps['options'][-1]['disabled']
+    assert len(emusettings.BY_ID[emusettings.FPS_ID]['options']) == 3     # the shared field is untouched
+
+
 def test_view_choices_for_devices_and_cards(user):
     _write(user, {'Audio': {'sdl_main_output_device': 'Headset (USB)'}, 'Vulkan': {'gpu_id': 3}})
     v = emusettings.view(str(user))
@@ -121,6 +128,12 @@ def test_coerce():
     assert emusettings.coerce(by['General.trophy_notification_duration'], 2.5) == 2.5
     with pytest.raises(emusettings.SettingsError):
         emusettings.coerce(by['GPU.vblank_frequency'], 30)
+    # owner 2026-11-12: frame rate is 60 / 120 / Unlocked buttons (vblank 60, 120, 9999)
+    assert [o['value'] for o in by['GPU.vblank_frequency']['options']] == [60, 120, 9999]
+    assert by['GPU.vblank_frequency']['tab'] == 'Graphics'
+    assert emusettings.coerce(by['GPU.vblank_frequency'], '120') == 120
+    with pytest.raises(emusettings.SettingsError):
+        emusettings.coerce(by['GPU.vblank_frequency'], 144)
     assert emusettings.coerce(by['Vulkan.gpu_id'], -1) == -1
     with pytest.raises(emusettings.SettingsError):
         emusettings.coerce(by['Vulkan.gpu_id'], -2)
@@ -159,8 +172,9 @@ def test_defaults_without_patch_readbacks_always_pro_and_shader_cache_once(user,
     assert sorted(wrote) == ['GPU.direct_memory_access_enabled', 'GPU.readback_linear_images_enabled',
                              'GPU.readbacks_mode', 'GPU.vblank_frequency', 'General.extra_dmem_in_mbytes',
                              'General.neo_mode', 'Vulkan.pipeline_cache_enabled']
-    # owner 2026-11-11: vblank 9999, direct memory access and DMem 3500 by default, not locked
-    assert cfg['GPU']['vblank_frequency'] == 9999 and cfg['GPU']['direct_memory_access_enabled'] is True
+    # owner 2026-11-11: direct memory access and DMem 3500 by default, not locked; 2026-11-12 (0.91.0): vblank 120
+    assert emusettings.frame_rate(str(user)) == 120
+    assert cfg['GPU']['vblank_frequency'] == 120 and cfg['GPU']['direct_memory_access_enabled'] is True
     assert cfg['General']['extra_dmem_in_mbytes'] == 3500
     assert not {'GPU.vblank_frequency', 'GPU.direct_memory_access_enabled', 'General.extra_dmem_in_mbytes'} & set(emusettings.locks())
     assert cfg['GPU']['readbacks_mode'] == 2 and cfg['GPU']['readback_linear_images_enabled'] is True
@@ -292,7 +306,9 @@ def test_a_look_that_finds_the_game_sets_the_defaults_once(sc, monkeypatch):  # 
     sc.setup_refresh()
     cfg = json.loads((user / 'custom_configs' / TITLE).read_text(encoding='utf-8'))
     assert cfg['GPU']['readbacks_mode'] == 2 and cfg['General']['neo_mode'] is True
-    assert sc.ctl.prefs['setup']['defaults_done'] == [os.path.normcase(os.path.abspath(str(user)))]
+    key = os.path.normcase(os.path.abspath(str(user)))
+    assert sc.ctl.prefs['setup']['defaults_done'] == [key, SC.FPS_MOVE + key]   # a new folder starts at 120
+    assert cfg['GPU']['vblank_frequency'] == 120
     cfg['General']['neo_mode'] = False                              # the player turns PS4 Pro mode off
     cfg['GPU']['readbacks_mode'] = 1
     (user / 'custom_configs' / TITLE).write_text(json.dumps(cfg), encoding='utf-8')

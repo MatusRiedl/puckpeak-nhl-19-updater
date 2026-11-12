@@ -837,8 +837,6 @@ def _apply(game_dir, layers, pack, database, lang, menus, art, progress=None):
                 st = os.stat(archive)
                 written[rel] = {'source_size': st.st_size, 'source_mtime': int(st.st_mtime),
                                 'entries': sorted(entries), 'size': os.path.getsize(tmp)}
-            if contents[rel]:
-                written[rel]['content'] = contents[rel]
         art_mod.release()   # the served art read back (_current_art) is in the archives replaced below
         partial = dict((old or {}).get('layers', {}), partial=True)
         for tmp, target, rel in tmps:
@@ -873,6 +871,13 @@ def _apply(game_dir, layers, pack, database, lang, menus, art, progress=None):
     if edits:
         state = save(written, info)
         _verify_written(game_dir, written, hashed, ours, save, info, tick('verify'))
+        # each file's content goes into the state only now, every new archive read back whole as written: one whose
+        # Patch stopped before that (a power cut, a crash) has no content and is written again by the next Patch
+        fresh = [rel for rel in written if contents.get(rel) and 'content' not in written[rel]]
+        for rel in fresh:
+            written[rel]['content'] = contents[rel]
+        if fresh:
+            state = save(written, info)
     else:
         state = {'version': VERSION, 'applied': datetime.datetime.now().isoformat(timespec='seconds'),
                  'game_dir': os.path.abspath(game_dir), 'layers': info, 'files': written}

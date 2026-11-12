@@ -30,7 +30,7 @@ def test_targets_and_blocks():
         'ProtoHttp: accept EAGAIN while waiting for the status code', 'Redirector host: ot.puckpeak.com',
         'QoS coordinator: skip TLS cert validation', 'Nucleus hosts: ot.puckpeak.com, 91.98.195.150',
         '60 FPS replays (Kravickas)', 'Resolution 2560x1440 (Kravickas)', 'Resolution 1280x720 (Kravickas)',
-        xmlpatch.THREES_REWARDS_TITLE, 'Cross-vendor exact math (rcp/rsqrt)',
+        xmlpatch.THREES_REWARDS_TITLE, 'Cross-vendor exact math (rcp/rsqrt)', xmlpatch.WOC_UNLOCK_TITLE,
         'R1: cap check on the Franchise per-team list append', 'BAP32: Seattle in Be a Pro', 'E32: 32 teams in every mode']
     off = (xmlpatch.RES1440_TITLE, xmlpatch.RES720_TITLE)
     assert all(b['enabled'] == (b['name'] not in off) and b['app_ver'] == '01.60' for b in blocks)
@@ -419,7 +419,7 @@ def test_the_resolution_blocks_are_written_off_and_switch_one_at_a_time():
         xmlpatch.resolution(both)
     with pytest.raises(xmlpatch.PatchError):
         xmlpatch.with_resolution(text, 900)
-    for old in (xmlpatch.build('localhost', features=f) for f in xmlpatch.EARLIER):
+    for old in (xmlpatch.build('localhost', features=f) for f in xmlpatch.EARLIER[:-1]):   # the last has res720
         assert xmlpatch.with_resolution(old, 1080) == old
         with pytest.raises(xmlpatch.PatchError):
             xmlpatch.with_resolution(old, 720)                    # no 720p block before 0.80.1
@@ -444,9 +444,15 @@ def test_repoint_keeps_the_resolution():
 
 def test_repoint_brings_a_0_70_7_or_0_80_0_file_up_with_its_resolution():
     nucleus = 'https://91.98.195.150/'
-    for features, value in ((f, v) for f in xmlpatch.EARLIER[1:] for v in (1080, 1440)):
+    for features, value in ((f, v) for f in xmlpatch.EARLIER[1:-1] for v in (1080, 1440)):
         old = xmlpatch.with_resolution(xmlpatch.build('ot.puckpeak.com', nucleus, features), value)
         assert xmlpatch.RES720_TITLE not in old
+        new = xmlpatch.repoint(old, 'ot.puckpeak.com', nucleus)
+        assert new == xmlpatch.with_resolution(xmlpatch.build('ot.puckpeak.com', nucleus), value)
+    # 0.90.0's file (no WoC item unlock) gets the block on the next Play, its resolution kept
+    for value in xmlpatch.RESOLUTIONS:
+        old = xmlpatch.with_resolution(xmlpatch.build('ot.puckpeak.com', nucleus, xmlpatch.EARLIER[-1]), value)
+        assert xmlpatch.WOC_UNLOCK_TITLE not in old
         new = xmlpatch.repoint(old, 'ot.puckpeak.com', nucleus)
         assert new == xmlpatch.with_resolution(xmlpatch.build('ot.puckpeak.com', nucleus), value)
 
@@ -470,6 +476,9 @@ def test_netplay_fingerprint_counts_only_what_reaches_the_other_game():
     # the 720p block is local (Setup's Resolution): the 0.81.0 candidate's file, without it, plays today's
     assert xmlpatch.netplay_fingerprint(xmlpatch.build('ot.puckpeak.com', 'https://91.98.195.150/',
                                                        features=xmlpatch.EARLIER[3])) == fp
+    # the WoC item unlock only changes menus: 0.90.0's file, without it, plays today's
+    assert xmlpatch.netplay_fingerprint(xmlpatch.build('ot.puckpeak.com', 'https://91.98.195.150/',
+                                                       features=xmlpatch.EARLIER[4])) == fp
     # the cross-vendor block counts: a game without it (0.80, another eboot) never plays one with it
     assert no_xv != fp
     # the 32-team switch changes the online team list: that one counts, and so does any other game byte

@@ -57,8 +57,12 @@ def start(emu_exe, game_dir, patch_file=None, running=None, popen=subprocess.Pop
     flags = 0
     if sys.platform == 'win32':
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-    return popen(command(run, game_dir, patch_file), cwd=cwd,
+    proc = popen(command(run, game_dir, patch_file), cwd=cwd,
                  creationflags=flags, close_fds=True, env=selfupdate.clean_environment())
+    if popen is subprocess.Popen and sys.platform == 'win32':
+        from . import gameicon      # NHL 19's icon on the emulator's window, not shadPS4's (owner 2026-11-12)
+        gameicon.watch(proc, game_dir)
+    return proc
 
 
 WM_CLOSE = 0x0010

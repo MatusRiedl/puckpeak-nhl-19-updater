@@ -357,6 +357,15 @@
       <Line Type="bytes" Address="0x5AEBE13" Value="99E6FFFFC5E05EDAC5E859EBE9164BC1FDC5F8100D84E6FFFFC5F05EC8C5F859D9E9314CC1FDC5F810256FE6FFFFC5D85EE3C5E059FCE9614DC1FDC5F810155AE6FFFFC5E85ED1C5F059DAE9DD53C1FDC5F8100D45E6FFFFC5F05EC8C5F859D1E9356AC1FDC5F8102530E6FFFFC5D85EE3C5E059ECE9946CC1FDC5F810151BE6FFFFC5E85ED0C5F859DAE92A74C1FDC5F8101D06E6FFFFC5E05EDAC5E859E3E9C177C1FDC5F81025F1E5FFFFC5D85EE2C5E859ECE9647AC1FDC5F8101DDCE5FFFFC5E05ED9C5F059EBE9627CC1FDC5F81015C7E5FFFFC5E85ED1C5F059E2E94E7EC1FDC5F81015B2E5FFFFC5E85ED1C5E859C9E985BEC1FDC5F810259DE5FFFFC5D85EE1C5F059ECE90D7645FEC5F8100588E5FFFFC4C1785EC7E97CB918FDC5F8100576E5FFFFC4C1785EC5E9647DB7FDC5F8100D64E5FFFFC4C1705EC9E952BCB7FDC5F8103D52E5FFFFC4C1405EFAE96920C1FDC5F8102D40E5FFFFC4C1505EE8E9CC7545FE"/>
     </PatchList>
   </Metadata>
+  <!-- Tweak gFEGameModesCreationZone_ForceUnlock ("Force all objects to be unlocked.", bool, object 0x5f4ae30): its
+       static initialiser stores the default 0 (mov byte [rip+0x5c5255c], 0 at 0x2f8905 -> +0x38), the E32 pattern.
+       Default 1 = every World of Chel customization item (gear, casual clothes) unlocked: the owner's "every WoC item is
+       owned" (docs/notes/woc.md). The server's Rewards items carry no customization ids (they are not known). -->
+  <Metadata Name="WoC: every customization item unlocked" AppVer="01.60" AppElf="eboot.bin" isEnabled="true">
+    <PatchList>
+      <Line Type="bytes" Address="0x6F8905" Value="C6055C25C50501"/>
+    </PatchList>
+  </Metadata>
   <!-- 0x423ad80 appends a 0x38 entry to a team's fixed list (32 slots of 366 inline entries, header begin/end/cap)
        with no capacity check; a full list's next entry zeroes the next team's begin/end and that team's next append
        writes to 0 (0xc0000005 at 0x423ce8c after "Too few players"). Hook 0x423ce71 -> cave 0x56eb000 (text padding):

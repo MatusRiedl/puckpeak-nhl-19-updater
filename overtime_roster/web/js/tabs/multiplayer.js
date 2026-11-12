@@ -559,7 +559,8 @@ function MatchRow({ m }) {
   const chelName = m.mode && m.mode.startsWith('chel_') ? ` · CHEL ${(CHEL_MODE_NAMES[m.mode] || '')}` : '';
   const shown = a.score != null && b.score != null;
   const score = shown ? `${a.score}–${b.score}` : (a.score != null ? `${a.score}–${b.score}?` : '–');
-  const modeText = m.mode === 'shootout' ? ' · Shootout' : m.mode === 'threes' ? ' · Threes' : chelName;
+  const modeText = m.mode === 'shootout' ? ' · Shootout' : m.mode === 'threes' ? ' · Threes'
+    : m.mode === 'versus' ? ' · Versus' : chelName;     // owner 2026-11-12: every row names its game
   // three parts (mockup): the first player with the match's state, the score, the second player with the buttons.
   // A confirmed match needs no tag (0.90.2, owner: the score says it); a live one has the red dot instead of a score.
   return html`<div class=${cls('mp-match', m.status, m.live && 'live')}>

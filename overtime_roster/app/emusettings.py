@@ -90,6 +90,11 @@ FIELDS = [
        'How frames reach the screen. Mailbox: smooth with little delay. FIFO: strict V-Sync. Immediate: the least '
        'delay, can tear.',
        options=_opts(('Mailbox', 'Mailbox (V-Sync)'), ('Fifo', 'FIFO (V-Sync)'), ('Immediate', 'Immediate (no V-Sync)'))),
+    _f('Graphics', 'Video', 'GPU', 'vblank_frequency', 'Frame rate', 'select', 60,
+       "The game paces everything by this (shadPS4's vblank: 60, 120 or 9999 Hz), and Overtime's patch makes cutscenes "
+       "and menus follow it too. 60 is the console's; Unlocked plays smoothest. Online matches use yours "
+       '(players on different frame rates play together fine).',
+       options=_opts((60, '60 fps'), (120, '120 fps'), (9999, 'Unlocked'))),
     _f('Graphics', 'Video', 'GPU', 'window_width', 'Window width', 'number', 1280,
        'The window size in Windowed mode, and the size it goes back to from fullscreen.', min=0, max=9999),
     _f('Graphics', 'Video', 'GPU', 'window_height', 'Window height', 'number', 720,
@@ -195,10 +200,6 @@ FIELDS = [
     _f('Experimental', 'Console', 'General', 'extra_dmem_in_mbytes', 'Additional DMem (MB)', 'number', 0,
        'Extra memory for the game. 1440p needs 3500 MB or more: Overtime sets it with the Resolution choice.',
        min=0, max=100000),
-    _f('Experimental', 'Console', 'GPU', 'vblank_frequency', 'Vblank (Hz)', 'number', 60,
-       "The game paces its frames by this. 60 Hz is the console's; 9999 unlocks it and plays smoother. "
-       'Online matches use yours too (players on different values play together fine).',
-       min=60, max=9999),
 ]
 BY_ID = {f['id']: f for f in FIELDS}
 DISPLAY_ID = 'GPU.full_screen_mode'
@@ -302,6 +303,19 @@ def locks():
     return out
 
 
+FPS_ID = 'GPU.vblank_frequency'     # the 60 / 120 / Unlocked choice; a hand-set other value still shows
+
+
+def frame_rate(user_dir):
+    """The Frame rate (vblank Hz) NHL 19 starts with: the game file's, else config.json's, else shadPS4's 60."""
+    f = BY_ID[FPS_ID]
+    for path in (gamesetup.custom_config_path(user_dir), os.path.join(user_dir, 'config.json')):
+        value = _value_in(_load(path), f)
+        if value is not None:
+            return value
+    return f['default']
+
+
 def view(user_dir, resolution=1080):
     """What the Game settings view shows: the tabs, every field with its value (game file, else config.json, else the
     emulator's default) and whether the game file sets it, the locks, and whether a save would be refused now."""
@@ -324,6 +338,8 @@ def view(user_dir, resolution=1080):
                 out['help'] = f"{f['help']} {note}"
         if f['id'] == 'General.' + gamesetup.DMEM_KEY and resolution == 1440:
             out['min'] = gamesetup.DMEM_1440
+        if f['id'] == FPS_ID and not any(str(o['value']) == str(value) for o in f['options']):
+            out['options'] = f['options'] + [{'value': value, 'label': f'{value} Hz (set by hand)', 'disabled': True}]
         fields.append(out)
     return {'tabs': list(TABS), 'fields': fields, 'path': gamesetup.custom_config_path(user_dir),
             'blocked': blocked()}
@@ -392,17 +408,18 @@ def _backup(path):
 
 # Written once per data folder after a game is found, without Patch (owner 2026-11-11, 0.90.2: "this should be default
 # for anyone after they locate a game ... people should be able to change it"); not locked, the player may change them
-# later. Vblank 9999 unlocks the frame pacing (60 Hz glitches); Additional DMem only goes up (a bigger value stays).
+# later. Vblank 120 (owner 2026-11-12, 0.91.0: the Frame rate choice starts at 120 fps; 9999 before); Additional DMem
+# only goes up (a bigger value stays).
 # The locked GPU keys (gamesetup.GPU_SETTINGS) are written at every look.
 FIRST_DEFAULTS = {('General', 'neo_mode'): True, ('Vulkan', 'pipeline_cache_enabled'): True,
-                  ('GPU', 'direct_memory_access_enabled'): True, ('GPU', 'vblank_frequency'): 9999,
+                  ('GPU', 'direct_memory_access_enabled'): True, ('GPU', 'vblank_frequency'): 120,
                   ('General', gamesetup.DMEM_KEY): gamesetup.DMEM_1440}
 AT_LEAST = {('General', gamesetup.DMEM_KEY)}
 
 
 def apply_defaults(user_dir, first):
     """Readbacks Precise and readback linear images on (always), and with `first` the FIRST_DEFAULTS (PS4 Pro mode,
-    Shader cache, Direct memory access, Vblank 9999, Additional DMem 3500 MB or more), in the game's own config file, without Patch. A new file starts from config.json; the file before is backed up.
+    Shader cache, Direct memory access, Frame rate 120, Additional DMem 3500 MB or more), in the game's own config file, without Patch. A new file starts from config.json; the file before is backed up.
     Returns the keys written ([] when all were set already). SettingsError while the game runs, a match is set up or
     the file does not read."""
     if not gamesetup.is_data_dir(user_dir):

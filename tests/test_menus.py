@@ -23,6 +23,27 @@ def fake_layout():
             + menus.GRID_ANCHOR + b'        "paddingH": 5\r\n    }\r\n}\r\n')
 
 
+CRLF = b'\r\n'
+
+
+def fake_playnow():
+    return CRLF.join([menus.PLAYNOW_STOCK[0], b'    --NHL19 BETA ProAM mode should be disabled',
+                      menus.PROAM_LOCK_ANCHOR + b'    return o', b'end', b'    ' + menus.PLAYNOW_STOCK[1], b''])
+
+
+def fake_playnow_layout():
+    tiles = zip((b'ProamTile', b'ThreesTile', b'GauntletTile', b'EASHLTile'),
+                (menus.TILE_X[0], menus.TILE_X[2], menus.TILE_X[1], menus.TILE_X[3]))
+    return (CRLF.join([b'{', b'    "name": "PlayNowMenu",', b'            "targets":', b'            [', b''])
+            + menus.PROAM_TARGET + CRLF.join([b'                "ThreesTile",', b'                "EASHLTile"',
+                                              b'            ],', b''])
+            + b''.join(b'            "name": "' + n + b'",' + CRLF + b'            ' + x for n, (x, _new) in tiles)
+            + b'}' + CRLF)
+
+
+PLAYNOW_FILES = {menus.PLAYNOW_PATH: fake_playnow(), menus.PLAYNOW_LAYOUT_PATH: fake_playnow_layout()}
+
+
 def changes(old, new):
     """[(tag, old lines, new lines)] of the line diff, equal runs left out."""
     a, b = old.split(b'\r\n'), new.split(b'\r\n')
@@ -98,7 +119,7 @@ def test_options():
 
 def test_edits_keep_the_news_tile_by_default():
     """The news tile stays (the text pack makes it the Puck Peak line); `news` off swaps it for an EMPTY tile."""
-    files = {menus.HOMEPAGE_PATH: fake_homepage(), menus.LAYOUT_PATH: fake_layout()}
+    files = {menus.HOMEPAGE_PATH: fake_homepage(), menus.LAYOUT_PATH: fake_layout(), **PLAYNOW_FILES}
     kept = menus.edits(files.__getitem__, menus.options())[menus.HOMEPAGE_PATH]
     assert menus.NEWS_ANCHOR in kept and menus.NEWS_EMPTY not in kept
     gone = menus.edits(files.__getitem__, menus.options({'news': False}))[menus.HOMEPAGE_PATH]
@@ -107,7 +128,7 @@ def test_edits_keep_the_news_tile_by_default():
 
 def test_the_hut_tile_stays_hidden_unless_the_option_is_on():
     """HUT's CardHouse is scaffolding (docs/notes/hut.md): the tile is hidden like before, `hut` brings it back."""
-    files = {menus.HOMEPAGE_PATH: fake_homepage(), menus.LAYOUT_PATH: fake_layout()}
+    files = {menus.HOMEPAGE_PATH: fake_homepage(), menus.LAYOUT_PATH: fake_layout(), **PLAYNOW_FILES}
     off = menus.edits(files.__getitem__, menus.options({'chel': False}))[menus.HOMEPAGE_PATH]
     on = menus.edits(files.__getitem__, menus.options({'hut': True, 'chel': False}))[menus.HOMEPAGE_PATH]
     assert b'[MODES_NAMES.ULTIMATETEAM] = true' in off and b'[MODES_NAMES.ULTIMATETEAM] = true' not in on
@@ -131,6 +152,37 @@ def test_game_files_edit_is_only_insertions(game_dir, chel):
     assert menus.edit_layout(layout) == layout.replace(b'"numSections": 6,', b'"numSections": 5,')
 
 
+def test_the_play_menu_loses_the_pro_am_tile():
+    """World of Chel's PLAY menu: Pro-Am locked in the Lua, its tile off screen and out of the cursor's targets, the
+    other three centred; served with every build."""
+    lua = menus.edit_playnow(fake_playnow())
+    assert lua.replace(menus.PROAM_LOCK, b'') == fake_playnow() and lua.count(b'o.mProAmModeLocked = true') == 1
+    lay = menus.edit_playnow_layout(fake_playnow_layout())
+    assert b'                "ProamTile",' not in lay and b'"name": "ProamTile",' in lay
+    for old, new in menus.TILE_X:
+        assert old not in lay and new in lay
+    with pytest.raises(menus.MenuError):
+        menus.edit_playnow(lua)
+    with pytest.raises(menus.MenuError):
+        menus.edit_playnow_layout(lay)
+    for opts in (menus.options({'chel': False}), menus.options()):
+        out = menus.edits(fake_files().__getitem__, opts)
+        assert out[menus.PLAYNOW_PATH] == lua and out[menus.PLAYNOW_LAYOUT_PATH] == lay
+
+
+@pytest.mark.game
+def test_the_play_menu_edit_on_the_games_own_files(game_dir):
+    import json
+    read = lambda path: gamefiles.read_latest(game_dir, path)[0]
+    lay = json.loads(menus.edit_playnow_layout(read(menus.PLAYNOW_LAYOUT_PATH)))
+    sel = next(b for b in lay['behaviors'] if b['name'] == 'SelectionManager')
+    assert sel['targets'] == ['GauntletTile', 'ThreesTile', 'EASHLTile']
+    assert {c['name']: c['x'] for c in lay['children']} == {'ProamTile': -2000.0, 'GauntletTile': 340.0,
+                                                           'ThreesTile': 760.0, 'EASHLTile': 1180.0}
+    raw = read(menus.PLAYNOW_PATH)
+    assert [tag for tag, _a, _b in changes(raw, menus.edit_playnow(raw))] == ['insert']
+
+
 # --- the zero-press launch hook (docs/plans/m2-zero-press.md) ---------------------------------------------------
 
 UNTIL = 1893456000
@@ -145,7 +197,7 @@ def fake_files(end=True):
     home = fake_homepage()
     if end:
         home = home[:-len(b'end\r\n')] + menus.HOME_END_ANCHOR + b'end\r\n'
-    return {menus.HOMEPAGE_PATH: home, menus.LAYOUT_PATH: fake_layout(), menus.HUB_PATH: fake_hub()}
+    return {menus.HOMEPAGE_PATH: home, menus.LAYOUT_PATH: fake_layout(), menus.HUB_PATH: fake_hub(), **PLAYNOW_FILES}
 
 
 def test_launch_off_changes_nothing_and_serves_no_hub():
@@ -248,7 +300,7 @@ def test_a_chel_launch_serves_the_tile_with_the_switch_off_and_no_hook():
     files = {**fake_files()}
     off = menus.options({'chel': False})
     on = menus.edits(files.__getitem__, off, {'until': UNTIL, 'mode': 'chel'})
-    assert set(on) == {menus.HOMEPAGE_PATH, menus.LAYOUT_PATH}
+    assert set(on) == set(menus.PATHS)
     assert b'[MODES_NAMES.EASHL] = true' not in on[menus.HOMEPAGE_PATH]
     assert b'[MODES_NAMES.EASHL] = true' in menus.edits(files.__getitem__, off)[menus.HOMEPAGE_PATH]
     assert on[menus.HOMEPAGE_PATH] == menus.edits(files.__getitem__, menus.options({'chel': True}))[menus.HOMEPAGE_PATH]

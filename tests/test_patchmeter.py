@@ -209,6 +209,23 @@ def test_an_art_archive_with_the_same_content_is_kept_not_written_again(game, tm
         assert arc.read(LOGO) == gnf('utah v2')
 
 
+def test_an_archive_whose_patch_stopped_before_reading_it_back_is_written_again(game, tmp_path, monkeypatch):  # noqa: F811
+    looks = pack(tmp_path, 'looks', {LOGO: gnf('utah'), KIT: gnf('utah kit')})
+
+    def power_cut(*a, **kw):
+        raise RuntimeError('power cut')
+    real = overlay._verify_written
+    monkeypatch.setattr(overlay, '_verify_written', power_cut)
+    with pytest.raises(RuntimeError):
+        overlay.apply(game, ('art',), art=[looks], **IDLE)
+    assert not any(r.get('content') for r in overlay._load_state(game)['files'].values())
+    monkeypatch.setattr(overlay, '_verify_written', real)
+    seen = []
+    st = overlay.apply(game, ('art',), art=[looks], progress=lambda stage, n: seen.append((stage, n)), **IDLE)
+    assert seen[0][1]['write'] > 0 and seen[0][1]['verify'] > 0     # not kept: written and read back
+    assert all(r.get('content') for r in st['files'].values())
+
+
 def test_a_kept_archive_that_changed_on_disk_is_refused_as_before(game, tmp_path):  # noqa: F811
     looks = pack(tmp_path, 'looks', {LOGO: gnf('utah'), KIT: gnf('utah kit')})
     st = overlay.apply(game, ('art',), art=[looks], **IDLE)

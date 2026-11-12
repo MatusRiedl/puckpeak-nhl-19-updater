@@ -142,6 +142,9 @@ def _pack_text(row):
     return f'Not downloaded{size}. Press Download.'
 
 
+FPS_MOVE = 'fps120:'     # defaults_done entry: this data folder's 9999 -> 120 move is done (0.91.0)
+
+
 class SetupController(Part):
     SLICES = {'setup': 'view'}
     CALLS = {'setup_refresh': 'setup_refresh', 'setup_pick_emulator': 'pick_emulator',
@@ -156,6 +159,7 @@ class SetupController(Part):
              'setup_play': 'setup_play', 'setup_build': 'setup_build', 'setup_build_update': 'setup_build_update',
              'setup_boost': 'setup_boost',
              'setup_boost_source': 'setup_boost_source', 'setup_resolution': 'setup_resolution',
+             'setup_framerate': 'setup_framerate',
              'setup_pkg_source': 'setup_pkg_source',
              'setup_emu_settings': 'emu_settings', 'setup_emu_settings_save': 'emu_settings_save',
              'setup_emu_input': 'emu_input', 'setup_emu_input_save': 'emu_input_save',
@@ -393,7 +397,7 @@ class SetupController(Part):
 
     def _defaults(self, found=None):
         """Game settings without Patch, once a game is found (owner 2026-11-11, 0.90.2): Readbacks Precise and Readback
-        linear images every time; PS4 Pro mode, Shader cache, Direct memory access, Vblank 9999 and DMem 3500 once
+        linear images every time; PS4 Pro mode, Shader cache, Direct memory access, Frame rate 120 and DMem 3500 once
         per data folder (emusettings.apply_defaults, FIRST_DEFAULTS).
         While the game runs or a match is set up, the next look does it."""
         f = found if found is not None else (self.found or {})
@@ -411,9 +415,30 @@ class SetupController(Part):
         if first:
             with self.ctl.lock:
                 self.defaults_done.append(key)
+                self.defaults_done.append(FPS_MOVE + key)   # a new folder starts at 120 already
                 self._remember()
         if wrote:
             self.ctl.host.log(f"Game settings set without Patch: {', '.join(wrote)} ({user})")
+        self._fps_move(user, key)
+
+    def _fps_move(self, user, key):
+        """Once per data folder (0.91.0, owner 2026-11-12): Frame rate Unlocked (vblank 9999, the old first default)
+        becomes 120 fps, so players don't crash on 9999. Any other value stays; Unlocked picked again later stays too.
+        Refused while the game runs or a match is set up: the next look does it."""
+        if FPS_MOVE + key in self.defaults_done:
+            return
+        try:
+            moved = emusettings.frame_rate(user) == 9999
+            if moved:
+                emusettings.save(user, {emusettings.FPS_ID: 120}, self.resolution)
+        except emusettings.SettingsError as err:
+            self.ctl.host.log(f'Frame rate not moved to 120 fps now: {err}')
+            return
+        with self.ctl.lock:
+            self.defaults_done.append(FPS_MOVE + key)
+            self._remember()
+        if moved:
+            self.ctl.host.log(f'Frame rate: Unlocked (9999) is now 120 fps, once ({user}). Setup, Boost changes it.')
 
     def _first_assets(self, found):
         """A new install's first look that finds NHL 19 and the published packs (0.90.2, owner 2026-11-11): the team
@@ -779,17 +804,27 @@ class SetupController(Part):
             self._remember()
 
     def _watch_play(self, emu, proc):
-        """Read the emulator log for a few minutes: did the patch apply, is ShadNet signed in?"""
+        """Until NHL 19 closes: the emulator log for the first PLAY_WATCH_SECONDS (did the patch apply, is ShadNet
+        signed in?), then only whether it still runs. Its exit ends 'running', so the Play button and the patch tab's
+        "shadPS4 runs" come back (they stayed greyed after a game longer than the log window)."""
         end = time.monotonic() + PLAY_WATCH_SECONDS
-        while time.monotonic() < end:
+        info = None
+        while True:
             time.sleep(5)
-            info = launch.check(emu)
+            reading = time.monotonic() < end
+            if reading:
+                info = launch.check(emu)
             exited = proc.poll() is not None
             with self.ctl.lock:
+                was = (self.play or {}).get('state')
                 self.play = {'state': 'ended' if exited else 'running', 'pid': proc.pid, 'log': info}
-            self.ctl.changed('setup', 'app')
+                if exited:
+                    self.ctl.patch_running = False
             if exited:
+                self.ctl.changed('setup', 'patch', 'app')
                 return
+            if reading or was != 'running':
+                self.ctl.changed('setup', 'app')
 
     def setup_firewall(self):
         """Ask Windows (UAC) to let shadPS4 in; only ever on the player's click. Then waits (a job) until the rule
@@ -1320,7 +1355,13 @@ class SetupController(Part):
         return {'build': self.build, 'builds': builds, 'playing': boost.build_of(emulator) or '',
                 'text': text, 'tone': tone, 'progress': part, 'can': not c.busy,
                 'can_update': cur['published'] and not c.busy and part is None,
-                'resolution': self.resolution, 'news': '' if part is not None else news, 'upstream': upstream}
+                'resolution': self.resolution, 'framerate': self._frame_rate(emulator),
+                'news': '' if part is not None else news, 'upstream': upstream}
+
+    @staticmethod
+    def _frame_rate(emulator):
+        user = gamesetup.emu_user_dir(emulator) if emulator else ''
+        return emusettings.frame_rate(user) if user else emusettings.FIRST_DEFAULTS[('GPU', 'vblank_frequency')]
 
     @staticmethod
     def _emulator_news():
@@ -1468,6 +1509,26 @@ class SetupController(Part):
         else:
             then = 'Patch the game again to use it.'
         self.ctl.say(f'Resolution set to {value}p. {then}'.strip(), 'good')
+        self.ctl.changed('setup')
+        return {'ok': True}
+
+    def setup_framerate(self, value):
+        """The Frame rate choice under Resolution (owner 2026-11-12, 0.91.0): 60, 120 or Unlocked (9999), shadPS4's vblank
+        in the game's own config file; the replays60 patch makes cutscenes and menus follow it. No Patch."""
+        user = self._emu_user()
+        if not user:
+            return {'error': 'Find NHL 19 in Setup first.'}
+        try:
+            emusettings.save(user, {emusettings.FPS_ID: value}, self.resolution)
+        except emusettings.SettingsError as err:
+            self.ctl.say(str(err), 'caution')
+            return {'error': str(err)}
+        except OSError as err:
+            self.ctl.say(f'The frame rate was not saved: {err}', 'caution')
+            return {'error': str(err)}
+        shown = next(o['label'] for o in emusettings.BY_ID[emusettings.FPS_ID]['options'] if str(o['value']) == str(value))
+        self.ctl.host.log(f'Frame rate: {shown}')
+        self.ctl.say(f'Frame rate set to {shown}. NHL 19 uses it from its next start.', 'good')
         self.ctl.changed('setup')
         return {'ok': True}
 

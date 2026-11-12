@@ -606,7 +606,10 @@ def one_click(setup, then=None):
                 'teams32': teams32, 'lang': lang, 'left_out': left_out, 'clubs': clubs}
 
     def said(out):
-        learn_patch(box.get('meter'), box.get('last'), cache, ctl.host.log)
+        try:
+            learn_patch(box.get('meter'), box.get('last'), cache, ctl.host.log)
+        except Exception as err:  # noqa: BLE001 - the bar never stops a patch that went in
+            ctl.host.log(f'Patch progress: {err}')
         layers = ', '.join(out['layers']) or 'none'
         ctl.host.log(f"Game patched: server {out['targets']['redirector']}, layers {layers}, "
                      f"{'32 teams' if out['teams32'] else '31 teams (the roster served has no active Seattle)'}")

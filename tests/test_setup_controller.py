@@ -967,7 +967,7 @@ def _patch_with_logos(sc, monkeypatch, tmp_path, database, came, schema):
     monkeypatch.setattr(patch, '_test_found', patch.ART_PACKS, raising=False)
     monkeypatch.setattr(patch, 'clubart_source', lambda cache_dir=None: str(tmp_path / 'clubart.zip'))
     monkeypatch.setattr(patch, 'make_kits', lambda *a, **kw: {})
-    monkeypatch.setattr(patch, 'make_clubart', lambda teams, game_dir, cache, log=None: made.append(teams) or {
+    monkeypatch.setattr(patch, 'make_clubart', lambda teams, game_dir, cache, log=None, **kw: made.append(teams) or {
         'clubs': 4, 'files': 8, 'drawn': 0, 'missing': ['Somebody'], 'kept': False})
 
     def default(self):
@@ -1274,6 +1274,45 @@ def test_resolution_choice_takes_720_1080_1440_and_is_kept(sc):
     assert sc.ctl.prefs['setup']['resolution'] == 720 and SC.SetupController(sc.ctl).resolution == 720
 
 
+def test_frame_rate_choice_saves_the_vblank(sc, monkeypatch):
+    """owner 2026-11-12 (0.91.0): Frame rate 60 / 120 / Unlocked under Resolution writes shadPS4's vblank."""
+    saved = []
+    monkeypatch.setattr(sc, '_emu_user', lambda: 'U')
+    monkeypatch.setattr(SC.emusettings, 'save', lambda user, changes, res: saved.append((user, changes)) or ['x'])
+    assert sc.setup_framerate(120) == {'ok': True}
+    assert saved == [('U', {'GPU.vblank_frequency': 120})]
+
+    def bad(user, changes, res):
+        raise SC.emusettings.SettingsError('Frame rate: not one of the choices')
+    monkeypatch.setattr(SC.emusettings, 'save', bad)
+    assert 'error' in sc.setup_framerate(144)
+    monkeypatch.setattr(sc, '_emu_user', lambda: '')
+    assert 'error' in sc.setup_framerate(60)
+
+
+def test_unlocked_9999_moves_to_120_once_per_data_folder(sc, monkeypatch):
+    """owner 2026-11-12 (0.91.0): players on vblank 9999 go to 120 fps once; Unlocked picked again later stays."""
+    rate, saved = {'v': 9999}, []
+    monkeypatch.setattr(SC.emusettings, 'frame_rate', lambda user: rate['v'])
+    monkeypatch.setattr(SC.emusettings, 'save', lambda user, ch, res: saved.append(ch) or rate.update(v=ch[SC.emusettings.FPS_ID]))
+
+    def refused(user, ch, res):
+        raise SC.emusettings.SettingsError('Close NHL 19 first')
+    monkeypatch.setattr(SC.emusettings, 'save', refused)
+    sc._fps_move('U', 'k')
+    assert SC.FPS_MOVE + 'k' not in sc.defaults_done                     # the game ran: the next look does it
+    monkeypatch.setattr(SC.emusettings, 'save', lambda user, ch, res: saved.append(ch) or rate.update(v=ch[SC.emusettings.FPS_ID]))
+    sc._fps_move('U', 'k')
+    assert saved == [{'GPU.vblank_frequency': 120}] and SC.FPS_MOVE + 'k' in sc.defaults_done
+    assert SC.FPS_MOVE + 'k' in sc.ctl.prefs['setup']['defaults_done']
+    rate['v'] = 9999                                                    # the player picks Unlocked again
+    sc._fps_move('U', 'k')
+    assert len(saved) == 1
+    rate['v'] = 60
+    sc._fps_move('U', 'other')                                          # 60 stays 60
+    assert len(saved) == 1 and SC.FPS_MOVE + 'other' in sc.defaults_done
+
+
 def test_downloads_folder_set_by_hand_moves_the_cache_and_auto_moves_it_back(sc, tmp_path, monkeypatch):
     monkeypatch.setenv('OVERTIME_ROSTER_HOME', str(tmp_path / 'home'))
     from overtime_roster.app import paths
@@ -1345,3 +1384,22 @@ def test_a_new_install_switched_an_asset_off_before_the_first_look_gets_only_the
     sc.first_assets = True
     sc._first_assets({'game': {'ok': True}})
     assert got == ['looks.zip', 'clubart.zip']
+
+
+def test_play_comes_back_when_the_game_closes_after_the_log_window(sc, monkeypatch):
+    """A game longer than PLAY_WATCH_SECONDS: the watch keeps going until the process exits, then the Play button and
+    the patch tab's "shadPS4 runs" come back (owner 2026-11-12: greyed until the app restarted)."""
+    clock = {'t': 0.0}
+    monkeypatch.setattr(SC.time, 'monotonic', lambda: clock['t'])
+    monkeypatch.setattr(SC.time, 'sleep', lambda s: clock.__setitem__('t', clock['t'] + s))
+    checks = []
+    monkeypatch.setattr(launch, 'check', lambda emu: checks.append(clock['t']) or {'patched': True})
+    proc = types.SimpleNamespace(pid=7, poll=lambda: 0 if clock['t'] >= SC.PLAY_WATCH_SECONDS + 600 else None)
+    sc.setup_refresh()
+    sc.play = {'state': 'starting', 'pid': 7, 'log': None}
+    sc.ctl.patch_running = True
+    assert sc.play_state()['text'] == 'NHL 19 is running'
+    sc._watch_play(str(sc.world['emu']), proc)
+    assert sc.play['state'] == 'ended' and sc.play['log'] == {'patched': True} and not sc.ctl.patch_running
+    assert sc.play_state()['text'] == 'Play NHL 19'
+    assert max(checks) < SC.PLAY_WATCH_SECONDS + 5   # the log is read in the first window only

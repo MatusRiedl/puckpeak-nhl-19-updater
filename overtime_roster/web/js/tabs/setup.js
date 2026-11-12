@@ -147,12 +147,20 @@ const BOOST_INFO = [
   { head: 'Your own shadPS4', items: ['It stays where it is, untouched.',
     'A portable shadPS4 with its own "user" folder keeps playing itself: the builds would not find its saves.'] },
   { head: 'Resolution', items: ["1080p is the game's own. 1440p renders at 2560x1440 (Kravickas's patch): sharper, needs a stronger GPU.", "720p renders at 1280x720 (Kravickas's patch): softer, for a weaker GPU.", '1440p also sets Additional DMem to 3500 MB; 720p and 1080p put your own value back.', 'Works with either build. Takes effect at the next start of NHL 19.'] },
+  { head: 'Frame rate', items: ['60, 120 (the default) or Unlocked: how fast NHL 19 runs (shadPS4\'s vblank). Cutscenes and menus follow it too.',
+    'Online, players on different frame rates play together fine. NHL 19 uses a new choice from its next start.'] },
   { head: 'Replays at 60 fps', items: ["Kravickas's patch, on for everyone: replays, celebrations and cutscenes run at 60 instead of 30."] },
 ];
 const RESOLUTIONS = [
   { value: 720, label: '720p', title: 'Renders at 1280x720 (Kravickas patch), for a weaker GPU' },
   { value: 1080, label: '1080p', title: "The game's own resolution" },
   { value: 1440, label: '1440p', title: 'Renders at 2560x1440 (Kravickas patch), needs a stronger GPU' },
+];
+
+const FRAMERATES = [
+  { value: 60, label: '60 fps', title: "The console's frame rate" },
+  { value: 120, label: '120 fps', title: 'Smoother, for a 120 Hz or faster screen (the default)' },
+  { value: 9999, label: 'Unlocked', title: 'As fast as your PC runs it' },
 ];
 
 function BoostCard({ s }) {
@@ -179,6 +187,11 @@ function BoostCard({ s }) {
       <div class="su-state su-res">
         <span class="su-st">Resolution</span>
         <${Segmented} options=${RESOLUTIONS} value=${b.resolution || 1080} onChange=${(v) => call('setup_resolution', v)}/>
+      </div>
+      <div class="su-state su-res">
+        <span class="su-st">Frame rate</span>
+        <${Segmented} options=${FRAMERATES} value=${b.framerate} disabled=${noEmu}
+          onChange=${(v) => call('setup_framerate', v)}/>
       </div>
       <div class="su-state su-emu">
         <span class="su-st">Settings</span>

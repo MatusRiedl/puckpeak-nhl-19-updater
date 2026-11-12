@@ -3,7 +3,20 @@
 Pure functions: the answer in, plain rows out. The server did the arithmetic (overtime_core.history); this only picks
 the words and puts "you" first.
 """
+import re
+
 from overtime_core import history as H, rating as R
+
+# The game styles of the rules table (overtime_core.rules), the one other part a match row keeps.
+_STYLES = ('Arcade', 'Traditional', 'Competitive', 'Full sim')
+
+
+def short_rules(text):
+    """A match row's rules: the period length and the game style only ('5 min · Full sim'; owner 2026-11-12: the
+    other rules were noise on the row). '' for default rules."""
+    parts = [p for p in (text or '').split(' · ') if re.fullmatch(r'\d+ min', p) or p in _STYLES]
+    return ' · '.join(parts)
+
 
 STATUS = {
     H.CONFIRMED: ('good', 'Confirmed'),
@@ -67,7 +80,7 @@ def match_row(m, you, now):
         sa = c.get('against', r['scores'].get(other['pid']))
         entry = {'opponent': other['name'], 'team': c.get('team') or r['teams'].get(you) or '',
                  'score_for': sf, 'score_against': sa, 'again': bool(c)}
-    return {'id': m['id'], 'ago': ago(now - m['started']), 'mode': m.get('mode') or 'versus', 'rules': m.get('rules') or '', 'status': r['status'],
+    return {'id': m['id'], 'ago': ago(now - m['started']), 'mode': m.get('mode') or 'versus', 'rules': short_rules(m.get('rules')), 'status': r['status'],
             'tone': tone, 'text': text, 'mine': bool(mine), 'players': [_side(p, r, you) for p in order], 'entry': entry,
             'delta': (m.get('deltas') or {}).get(you) if mine and r['status'] == H.CONFIRMED else None, **live_of(m)}
 
@@ -98,7 +111,7 @@ def team_row(m, you, now):
                       'won': any(x['side'] == s and x['won'] for x in r.get('sides') or []), 'you': s == mine})
     players = [p for s in order for p in m['players'] if side_of[p['pid']] == s]
     return {'id': m['id'], 'ago': ago(now - m['started']), 'mode': m.get('mode') or 'chel_dropin',
-            'rules': m.get('rules') or '', 'status': r['status'], 'tone': tone, 'text': text, 'mine': mine is not None,
+            'rules': short_rules(m.get('rules')), 'status': r['status'], 'tone': tone, 'text': text, 'mine': mine is not None,
             'team': True, 'sides': sides, 'players': [_side(p, r, you) for p in players], 'entry': None,
             'against': ', '.join(n for x in sides if not x['you'] for n in x['names']),
             'delta': (m.get('deltas') or {}).get(you) if mine is not None and r['status'] == H.CONFIRMED else None,
@@ -207,7 +220,7 @@ def detail_view(d, you, now):
         return None
     recent = [{'id': m['id'], 'ago': ago(now - m['started']), 'status': m['status'], 'result': m['result'],
                'opponent': m['opponent']['name'], 'team': m['team'], 'opp_team': m['opp_team'], 'for': m['for'],
-               'against': m['against'], 'rules': m.get('rules') or ''} for m in d['recent']]
+               'against': m['against'], 'rules': short_rules(m.get('rules'))} for m in d['recent']]
     return {'pid': d['pid'], 'name': d['name'], 'you': d['pid'] == you, 'w': d['w'], 'l': d['l'], 'played': d['played'],
             'gf': d['gf'], 'ga': d['ga'], 'opponents': d['opponents'], 'teams': d['teams'], 'against': d['against'],
             'recent': recent}
@@ -287,7 +300,7 @@ def games_view(d, now):
                              if st['rates'].get(k) is not None]}
     games = [{'id': m['id'], 'ago': ago(now - m['started']), 'status': m['status'], 'result': m['result'],
               'opponent': m['opponent']['name'], 'team': m['team'], 'opp_team': m['opp_team'], 'for': m['for'],
-              'against': m['against'], 'rules': m.get('rules') or '', 'mode': m.get('mode') or 'versus',
+              'against': m['against'], 'rules': short_rules(m.get('rules')), 'mode': m.get('mode') or 'versus',
               'box': [{'label': r['label'], 'me': _shown(r['key'], r['me']), 'them': _shown(r['key'], r['them'])}
                       for r in m.get('box') or []]} for m in d['recent']]
     return {'w': d['w'], 'l': d['l'], 'played': d['played'], 'gf': d['gf'], 'ga': d['ga'], 'overall': overall,

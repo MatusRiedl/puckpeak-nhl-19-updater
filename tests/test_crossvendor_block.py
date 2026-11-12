@@ -60,7 +60,8 @@ def test_hooks_jump_into_caves_and_nothing_overlaps():
 def test_default_carries_the_block_and_an_unknown_eboot_does_not():
     assert 'crossvendor' in xmlpatch.DEFAULT and xmlpatch.DEFAULT[-2:] == ('bap32', 'expansion32')
     assert xmlpatch.NO_CROSSVENDOR == tuple(f for f in xmlpatch.DEFAULT if f != 'crossvendor')
-    assert xmlpatch.EARLIER[-1] == tuple(f for f in xmlpatch.DEFAULT if f != 'res720')   # the 0.81.0 candidate's file
+    assert xmlpatch.EARLIER[-2] == tuple(f for f in xmlpatch.DEFAULT if f not in ('res720', 'woc_unlock'))   # 0.81.0 cand.
+    assert xmlpatch.EARLIER[-1] == tuple(f for f in xmlpatch.DEFAULT if f != 'woc_unlock')   # 0.90.0's file
     for sha in crossvendor.EBOOT_SHA256:
         assert xmlpatch.for_eboot(sha) == xmlpatch.for_eboot(sha.upper()) == xmlpatch.DEFAULT
     assert xmlpatch.for_eboot('0' * 64) == xmlpatch.for_eboot(None) == xmlpatch.NO_CROSSVENDOR

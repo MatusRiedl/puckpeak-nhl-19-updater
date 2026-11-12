@@ -2,38 +2,50 @@
 
 What changed in each version, for players.
 
-## Unreleased
+## 0.91.0 (2026-11-13)
+
+### Added
+
+- **Frame rate: 60 fps, 120 fps or Unlocked.** Pick it on Setup's Boost card under Resolution, or in Game settings,
+  Graphics. It sets shadPS4's vblank, and cutscenes and menus follow it. New installs start at 120 fps.
+- **NHL 19's own icon** on the emulator window, the taskbar and Alt+Tab, taken from your game when it starts.
+- **World of Chel customization items are unlocked.** Customize Pro showed a padlock on every item but the default.
 
 ### Changed
 
-- **Patch's progress bar follows the time.** It used to jump between fixed points (2, 50, 60, 62, 65, 85, 92 %) and
-  stand still for minutes at 62 % and 65 % while the jerseys were made and the art was written. Now Patch first
-  measures its work (the textures to make, the bytes to check, copy, write and read back), turns it into time with
-  this PC's speed for each kind of work, and the bar moves by that: 1 % is about 1 % of the time. A step that turns
-  out larger or smaller than measured never makes the bar jump back or ahead, only go slower or faster. Each step's
-  speed is measured while it runs, and kept after the Patch (`patch_speed.json` in the cache), so the next Patch
-  starts with this PC's speeds. The log says how long each step took against its plan.
-- **What Patch has written so far, beside the %:** "[Patched 10.3 GB]" on the Help bar, counted live as the jerseys
-  and club logos are made and the patch files are copied and written (reading them back is not counted). The log
-  says the total at the end.
-- **A faster first Patch:**
-  - The texture encoder makes BC7 textures about 20 % faster (the jerseys' slowest kind), byte for byte the same
-    textures: the same numbers in the same order, fewer copies of them. Jerseys made before stay as they are.
-  - The club logos are made on every core (processes, as the jerseys): on threads they used two or three.
-  - A pack downloaded by the app and found to be the published file (its sha256) is not unpacked again at the first
-    Patch to check it; each texture is still checked against its sha256 as it is written into the game's archives.
-  - A pack that is checked in full (one from the exe or the repository, or the 3D jerseys against the game the first
-    time) is checked on every core.
-  - Jerseys and club logos made at Patch are not unpacked again right after: they were checked as they were made.
-  - The game's archives are listed once per Patch for the club logos and every jersey family.
-- **A Patch with the art unchanged no longer writes it again.** Patch wrote every art archive again and read it all
-  back on every press (over 15 GB with every pack on). An archive is kept when its content is the one the last Patch
-  wrote (the same textures by sha256 in the same order, the same game archive under a copy), it is still as it was
-  written (size and time, else its sha256) and its table still lists every texture at its size. The first Patch after
-  updating writes everything once.
-- **The 3D jerseys pack is checked against the game once**, not on every Patch: its deltas are laid on the game's
-  files and checked in full the first time, then recorded with the game's archives (names, sizes, times). While
-  neither changes, each texture is still checked against its sha256 as it is written.
+- **Unlocked (9999) moves to 120 fps, once.** Unlocked crashed games for some players. The app switches it to 120 fps
+  one time; if you pick Unlocked again afterwards, it stays.
+- **Match rows** show only the period length and game style (for example "5 min · Full sim"). Matches found without a
+  lobby show the game's own rules, and Versus matches are named.
+- **World of Chel's PLAY menu has no Pro-Am tile**; the other three are centred.
+
+Patch progress and speed, by Kravickas
+([pull request 2](https://github.com/MatusRiedl/puckpeak-nhl-19-updater/pull/2)):
+
+- **Patch's progress bar follows the time.** It used to jump between fixed points and stand still for minutes at 62 %
+  and 65 % while the jerseys were made and the art was written. Patch now measures its work first and moves the bar
+  by the time each part takes on your PC, so 1 % is about 1 % of the time. It learns your PC's speed for the next
+  Patch (`patch_speed.json` in the cache).
+- **"[Patched 10.3 GB]" beside the %:** how much Patch has written so far.
+- **A faster first Patch.** Jerseys are made about 20 % faster (the same textures, byte for byte), club logos use
+  every core, and packs that were already checked (downloaded and matching their published checksum, or just made on
+  your PC) are not unpacked again to check them. Each texture is still checked as it is written into the game files.
+- **Patch again in seconds when the art didn't change.** Patch used to write and read back every art file on every
+  press (over 15 GB with every pack on). Now a file that is the same as last time, and still as it was written, is
+  kept. The first Patch after updating writes everything once, and a Patch cut off before its final check writes
+  everything again.
+- **3D jerseys are checked against your game once**, not on every Patch, until the game or the pack changes.
+
+### Fixed
+
+- **The Play button comes back** when NHL 19 closes after its first 3 minutes (it stayed on "running").
+
+### Server (live already, no update needed)
+
+- **Drop-in games take more players before the puck drops.** Two searchers start a game; players who search in the
+  next moments join it, until everyone presses READY. New, being tested.
+- Drop-in games of three or more players get a relay port per player, on the North American relay when everyone is
+  in North America.
 
 ## 0.90.2 (2026-11-11)
 

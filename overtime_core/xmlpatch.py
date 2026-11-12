@@ -62,6 +62,7 @@ RES1440_TITLE = 'Resolution 2560x1440 (Kravickas)'
 RES720_TITLE = 'Resolution 1280x720 (Kravickas)'
 THREES_REWARDS_TITLE = 'T1: not-found check on the Threes unlock lookup'
 CROSSVENDOR_TITLE = crossvendor.TITLE
+WOC_UNLOCK_TITLE = 'WoC: every customization item unlocked'
 
 
 class Feature:
@@ -131,6 +132,13 @@ FEATURES = {
        goes to 0x1406fd3, where the live ZF makes the existing cmovz write 0xffff (the code's own "no asset" value). -->""",
         [('0x1806FBD', 'E93E422E04909090'),
          ('0x5AEB200', '740C4989C8498B4008E9B7BDD1FBE9C0BDD1FB')]),
+    'woc_unlock': Feature(
+        WOC_UNLOCK_TITLE,
+        """  <!-- Tweak gFEGameModesCreationZone_ForceUnlock ("Force all objects to be unlocked.", bool, object 0x5f4ae30): its
+       static initialiser stores the default 0 (mov byte [rip+0x5c5255c], 0 at 0x2f8905 -> +0x38), the E32 pattern.
+       Default 1 = every World of Chel customization item (gear, casual clothes) unlocked: the owner's "every WoC item is
+       owned" (docs/notes/woc.md). The server's Rewards items carry no customization ids (they are not known). -->""",
+        [('0x6F8905', 'C6055C25C50501')]),
     'ledger_cap': Feature(
         'R1: cap check on the Franchise per-team list append',
         """  <!-- 0x423ad80 appends a 0x38 entry to a team's fixed list (32 slots of 366 inline entries, header begin/end/cap)
@@ -188,18 +196,20 @@ FEATURES = {
 }
 # bap32 and expansion32 stay last: DEFAULT[:-2] is the patch without the 32-team switch (xmlpatch.expansion32_off)
 DEFAULT = ('eagain', 'redirector', 'qos_ncrt', 'nucleus', 'replays60', 'res1440', 'res720', 'threes_rewards',
-           'crossvendor', 'ledger_cap', 'bap32', 'expansion32')
+           'crossvendor', 'woc_unlock', 'ledger_cap', 'bap32', 'expansion32')
 # DEFAULT for an eboot the cross-vendor block does not name (for_eboot): the same file without it
 NO_CROSSVENDOR = tuple(f for f in DEFAULT if f != 'crossvendor')
 # what earlier versions wrote: repoint takes such a file as its own and writes today's DEFAULT (a player's next Play
 # brings new blocks in without Patch). The third is 0.80.0's DEFAULT (also 0.81.0's NO_CROSSVENDOR), the last 0.81.0's
-# DEFAULT (a candidate testers ran; neither has res720).
+# DEFAULT (a candidate testers ran; neither has res720), the last 0.90.0's (no woc_unlock).
 EARLIER = (('eagain', 'redirector', 'qos_ncrt', 'nucleus', 'ledger_cap', 'bap32', 'expansion32'),
            ('eagain', 'redirector', 'qos_ncrt', 'nucleus', 'replays60', 'res1440', 'ledger_cap', 'bap32', 'expansion32'),
            ('eagain', 'redirector', 'qos_ncrt', 'nucleus', 'replays60', 'res1440', 'threes_rewards', 'ledger_cap',
             'bap32', 'expansion32'),
            ('eagain', 'redirector', 'qos_ncrt', 'nucleus', 'replays60', 'res1440', 'threes_rewards', 'crossvendor',
-            'ledger_cap', 'bap32', 'expansion32'))
+            'ledger_cap', 'bap32', 'expansion32'),
+           ('eagain', 'redirector', 'qos_ncrt', 'nucleus', 'replays60', 'res1440', 'res720', 'threes_rewards',
+            'crossvendor', 'ledger_cap', 'bap32', 'expansion32'))
 # the Resolution choice: 1080 is the game's own (no block on), the others one block each
 RESOLUTION_BLOCKS = {720: RES720_TITLE, 1440: RES1440_TITLE}
 RESOLUTIONS = (720, 1080, 1440)
@@ -405,9 +415,9 @@ def has_crossvendor(text):
 
 
 # Blocks and lines that never reach the other game: the picture size (Setup's Resolution), Be a Pro (offline only, off
-# with the league switch), the Threes unlock guard (only a lookup that would crash changes) and the server's name (one
-# lobby is one server, whatever name or address the app was given).
-LOCAL_ONLY_TITLES = (RES1440_TITLE, RES720_TITLE, BAP32_TITLE, THREES_REWARDS_TITLE)
+# with the league switch), the Threes unlock guard (only a lookup that would crash changes), the WoC item unlock (menus
+# only) and the server's name (one lobby is one server, whatever name or address the app was given).
+LOCAL_ONLY_TITLES = (RES1440_TITLE, RES720_TITLE, BAP32_TITLE, THREES_REWARDS_TITLE, WOC_UNLOCK_TITLE)
 LOCAL_ONLY_LINES = (REDIRECTOR,) + NUCLEUS
 # Blocks both games must have (they count in netplay_fingerprint) that each game carries itself: the lobby recipe leaves
 # them out (the cross-vendor block alone is ~30 KB, near the server's 32 KiB per patch text) and the match patch takes

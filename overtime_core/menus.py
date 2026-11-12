@@ -45,7 +45,11 @@ HOMEPAGE_PATH = 'nhl/ui/features/homepage/vvms/homepage.lua'
 LAYOUT_PATH = 'nhl/ui/features/homepage/vvms/homepage.layout'
 HUB_PATH = 'nhl/ui/features/online/vvms/hub/hub.lua'
 THREES_HUB_PATH = 'nhl/ui/features/3on3/vvms/hub/hub.lua'   # NHL Threes' own hub: Offline / Campaign / Online
-PATHS = (HOMEPAGE_PATH, LAYOUT_PATH)
+# World of Chel's PLAY menu (Pro-Am / Ones / Drop-in Threes / EASHL tiles, docs/notes/woc-menus.md). Pro-Am's challenge
+# room stalls on CHOOSE A POSITION (docs/notes/woc.md, lab p28-p32, q1-q2), so its tile leaves the menu.
+PLAYNOW_PATH = 'nhl/ui/features/resort/vvms/playnowmenu/playnowmenu.lua'
+PLAYNOW_LAYOUT_PATH = 'nhl/ui/features/resort/vvms/playnowmenu/playnowmenu.layout'
+PATHS = (HOMEPAGE_PATH, LAYOUT_PATH, PLAYNOW_PATH, PLAYNOW_LAYOUT_PATH)
 LAUNCH_PATHS = PATHS + (HUB_PATH, THREES_HUB_PATH) + tuple(rules.PATHS.values())   # what a launch (set_menus) adds, and a clear takes off again
 
 DEAD = ('ULTIMATETEAM', 'HOCKEYDRAFT', 'EASHL')  # MODES_NAMES keys: Hockey Ultimate Team, Draft Champions, WOC
@@ -271,6 +275,52 @@ def edit_layout(raw):
     return raw.replace(GRID_ANCHOR, b'"numSections": 5,\r\n')
 
 
+# playnowmenu.lua: the game's own Pro-Am lock (the NHL 19 closed beta's: the action goes INVALID and the layout's
+# ProAmModeDisabledStyle applies) forced on, so the mode cannot be opened even if the tile were reached.
+PROAM_LOCK_ANCHOR = b'    o.mProAmModeLocked = o.data.IsClosedBeta ~= nil and  o.data.IsClosedBeta or false\r\n'
+PROAM_LOCK = (b'    -- Overtime menus: Pro-Am\'s challenge room stalls (no server answer found), so the mode stays locked\r\n'
+              b'    o.mProAmModeLocked = true\r\n')
+PLAYNOW_STOCK = (b'function PlayNowMenu:new(init)', b'self.im.ChangeActionState(ACTIONS.PROAM, state)')
+# playnowmenu.layout: ProamTile leaves the cursor's targets and the screen (x off the 1920 canvas); the other three
+# tiles (400 wide, 20 apart) are centred: 340 / 760 / 1180 instead of 545 / 965 / 1385. The tile itself stays, so
+# the style behavior that names it still finds it.
+PROAM_TARGET = b'                "ProamTile",\r\n                "GauntletTile",\r\n'
+TILE_X = ((b'"x": 125.0,\r\n', b'"x": -2000.0,\r\n'), (b'"x": 545.0,\r\n', b'"x": 340.0,\r\n'),
+          (b'"x": 965.0,\r\n', b'"x": 760.0,\r\n'), (b'"x": 1385.0,\r\n', b'"x": 1180.0,\r\n'))
+PLAYNOW_LAYOUT_STOCK = (b'"name": "PlayNowMenu",', b'"name": "ProamTile",', b'"name": "EASHLTile",')
+
+
+def edit_playnow(raw):
+    """playnowmenu.lua with Pro-Am locked."""
+    path = PLAYNOW_PATH
+    if MARK in raw:
+        raise MenuError(f'{path} is already edited')
+    if raw.count(b'\r\n') != raw.count(b'\n'):
+        raise MenuError(f'{path} does not have CRLF line ends')
+    missing = [s for s in PLAYNOW_STOCK if raw.count(s) != 1]
+    if missing:
+        raise MenuError(f'{path} is not the playnowmenu.lua this patch knows ({missing[0][:60]!r})')
+    _once(raw, PROAM_LOCK_ANCHOR, path)
+    return raw.replace(PROAM_LOCK_ANCHOR, PROAM_LOCK_ANCHOR + PROAM_LOCK)
+
+
+def edit_playnow_layout(raw):
+    """playnowmenu.layout without the Pro-Am tile (off screen, not a cursor target), the other three centred."""
+    path = PLAYNOW_LAYOUT_PATH
+    if raw.count(b'\r\n') != raw.count(b'\n'):
+        raise MenuError(f'{path} does not have CRLF line ends')
+    missing = [s for s in PLAYNOW_LAYOUT_STOCK if raw.count(s) != 1]
+    if missing:
+        raise MenuError(f'{path} is not the playnowmenu.layout this patch knows ({missing[0][:60]!r})')
+    _once(raw, PROAM_TARGET, path)
+    for old, _new in TILE_X:
+        _once(raw, old, path)
+    out = raw.replace(PROAM_TARGET, PROAM_TARGET.split(b'\r\n', 1)[1])
+    for old, new in TILE_X:
+        out = out.replace(old, new)
+    return out
+
+
 def options(given=None, served=None):
     """The layer's options: the defaults, then the ones served now, then `given` (unknown keys are refused)."""
     out = dict(OPTIONS)
@@ -296,15 +346,20 @@ def launch_mode(launch):
     return mode
 
 
+def playnow_edits(read):
+    """World of Chel's PLAY menu without Pro-Am, served with every build (World of Chel switched on or not)."""
+    return {PLAYNOW_PATH: edit_playnow(read(PLAYNOW_PATH)), PLAYNOW_LAYOUT_PATH: edit_playnow_layout(read(PLAYNOW_LAYOUT_PATH))}
+
+
 def edits(read, opts, launch=None):
-    """{path: new bytes} for the two files, plus hub.lua with `launch` ({'until': unix seconds, 'diag': bool, 'mode':
+    """{path: new bytes} for the homepage's two files and the PLAY menu's two, plus hub.lua with `launch` ({'until': unix seconds, 'diag': bool, 'mode':
     versus|shootout, 'rules': {rule: value}}) and that mode's rules file when it names rules; `read(path)` gives the
     game's own bytes. A 'chel' launch changes only the homepage: the tile on, no hook."""
     if launch and launch_mode(launch) == CHEL_LAUNCH:
         return {HOMEPAGE_PATH: edit_homepage(read(HOMEPAGE_PATH), chel=True, news=opts['news'], hut=opts['hut']),
-                LAYOUT_PATH: edit_layout(read(LAYOUT_PATH))}
+                LAYOUT_PATH: edit_layout(read(LAYOUT_PATH)), **playnow_edits(read)}
     out = {HOMEPAGE_PATH: edit_homepage(read(HOMEPAGE_PATH), chel=opts['chel'], news=opts['news'], launch=launch, hut=opts['hut']),
-           LAYOUT_PATH: edit_layout(read(LAYOUT_PATH))}
+           LAYOUT_PATH: edit_layout(read(LAYOUT_PATH)), **playnow_edits(read)}
     if launch:
         mode = launch_mode(launch)
         out[HUB_PATH] = edit_hub(read(HUB_PATH), launch['until'], mode)

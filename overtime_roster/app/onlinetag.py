@@ -1,7 +1,8 @@
 """The matchmaking tag (0.81.0, plan WP3): only games that stay in step meet, in open matchmaking and in a lobby.
 
-EA's `<region>_versioninfo.ini` key `onlineVersion` is the game's Blaze gameProtocolVersionString, and the server pairs
-only equal ones (overtime_server game_manager._partner_for). The ini is a loose file, so shadPS4's `<game>-mods` overlay
+EA's `<region>_versioninfo.ini` key `onlineVersion` is the game's Blaze gameProtocolVersionString, and the server paired
+only equal ones until 2026-11-12; since then matchmaking compares only the part before '-' (game_manager._base_version,
+owner's call), and the app's lobby still compares the full tag. The ini is a loose file, so shadPS4's `<game>-mods` overlay
 replaces it; the WP1 spike (2026-11-09, docs/notes/crossplay.md) showed the game sends only the first 15 characters.
 
 The tag is the game's own onlineVersion (10 characters at most) + '-' + 4 base-62 characters of a hash of what decides
