@@ -2,6 +2,20 @@
 
 What changed in each version, for players.
 
+## 0.95.1 (2026-11-13)
+
+### Changed
+
+- **The Puck Peak apps, top left**: the app you are in now lights up in its own colour with "You are here"; Blueline
+  and Faceoff stay quiet until you point at them.
+- **Clearer colours**: switches and checkboxes are green when on. Red is kept for tabs, what you picked and the main
+  button on a card. Delete in the roster list stays grey until you point at it.
+- **Setup**: Where is NHL 19? shows the game and the emulator on their own lines, with check marks for shadPS4,
+  NHL 19, ShadNet and Network. Kravickas's Get newest and Source code are links beside the build choice. "Apply
+  everywhere" is now "Also replays and cutscenes". Every roster has a tag (In game, Overtime Roster, Online). Discord
+  and Buy me a coffee moved under the rosters.
+- **The bar at the bottom** shows progress only while something runs; otherwise a green tick.
+
 ## 0.95.0 (2026-11-13)
 
 ### Added

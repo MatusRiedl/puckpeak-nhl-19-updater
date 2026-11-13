@@ -22,7 +22,7 @@ function Mark({ tone }) {
   return html`<span class=${cls('su-mark', tone || 'idle')}><svg viewBox="0 0 16 16" aria-hidden="true">${MARKS[tone || 'idle']}</svg></span>`;
 }
 
-// --- Discord and Ko-fi: first in Setup, as in Legacy (0.50.2 / 0.50.4) -----------------------------------------------------
+// --- Discord and Ko-fi: under the rosters, smaller (2026-11-13; before that first in Setup, as in Legacy 0.50.2 / 0.50.4) ---
 // Discord's mark (simple-icons, CC0), drawn here: the page loads nothing from the internet
 const DISCORD_MARK = 'M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z';
 
@@ -122,14 +122,18 @@ function WhereCard({ s }) {
   return html`<${Card} n="1" title="Where is NHL 19?" className="su-where"
       aside=${html`<${Info} title="Where is NHL 19?" sections=${WHERE_INFO}/>`}>
     <div class="card-body">
-      <div class="row">
-        <${PathText} path=${s.emulator.path} unset="Not picked yet"/>
+      <div class="row su-pathrow">
+        <div class="su-paths">
+          ${(s.folders || []).filter((f) => f.key === 'game' || f.key === 'emulator').reverse().map((f) => html`<div key=${f.key} class="su-path">
+            <span class="su-pl">${f.key === 'game' ? 'Game' : 'Emulator'}</span><${PathText} path=${f.path} unset="Not found"/></div>`)}
+        </div>
         <${Button} kind=${s.emulator.path ? 'ghost' : 'primary'} disabled=${busy} onClick=${() => findGame(s.emulator.path)}
           title="Pick NHL 19's eboot.bin or its PKG, or your shadPS4 (shadPS4QtLauncher.exe or shadPS4.exe)">Find game...<//>
       </div>
       <${Folders} folders=${s.folders} checks=${s.checks} checking=${s.checking} busy=${busy}/>
-      <div class=${cls('su-state', st.tone)}>
-        <span class="su-st">${st.text}</span>
+      <div class=${cls('su-state', st.tone, 'su-checkrow')}>
+        ${st.tone === 'good' ? html`<span class="su-chips">${(s.checks || []).map((c) => html`<span key=${c.key} class="su-chip" title=${c.text}><${Mark} tone=${c.tone}/>${c.label}</span>`)}</span>`
+          : html`<span class="su-st">${st.text}</span>`}
         ${s.emulator.path && html`<${Button} small disabled=${busy} onClick=${() => call('setup_refresh')}>Check again<//>`}
       </div>
     </div>
@@ -140,19 +144,19 @@ function WhereCard({ s }) {
 const BOOST_INFO = [
   { head: 'What it does', items: ['Picks the shadPS4 build that the green Play NHL 19 button starts. The lit one is in use.',
     "Overtime Native (the default): Overtime's own build of shadPS4 for NHL 19, with less RAM reserved, lighter controller polling, steadier frames and the fix for the \"Out of order flip IRQ\" crash. New versions come with Overtime releases.",
-    "Kravickas: Kravickas's NHL 19 build, with his fix for the same crash. Update gets his newest published build now.",
+    "Kravickas: Kravickas's NHL 19 build, with his fix for the same crash. Get newest gets his newest published build now.",
     'Play downloads the chosen build the first time, and again when a newer one is published.',
     'Saves, patch and ShadNet login stay the same with either build.'] },
   { head: 'Online', items: ['Multiplayer lobbies start the lobby build (Overtime Native) by themselves, whichever one is chosen here.',
     'Open matchmaking pairs you with players on the same build.'] },
   { head: 'Source code (GPL-2.0)', items: ['Overtime Native: github.com/MatusRiedl/shadPS4, branch overtime-nightly.',
-    'Kravickas: the Kravickas source button on the card.'] },
+    'Kravickas: Source code, beside the build choice on the card.'] },
   { head: 'Your own shadPS4', items: ['It stays where it is, untouched.',
     'A portable shadPS4 with its own "user" folder keeps playing itself: the builds would not find its saves.'] },
   { head: 'Resolution', items: ["1080p is the game's own. 1440p renders at 2560x1440 (Kravickas's patch): sharper, needs a stronger GPU.", "720p renders at 1280x720 (Kravickas's patch): softer, for a weaker GPU.", '1440p also sets Additional DMem to 3500 MB; 720p and 1080p put your own value back.', 'Works with either build. Takes effect at the next start of NHL 19.'] },
   { head: 'Frame rate', items: ['60, 120 or Unlocked (the default): how fast NHL 19 runs (shadPS4\'s vblank).',
     'Online, players on different frame rates play together fine. NHL 19 uses a new choice from its next start.'] },
-  { head: 'Apply everywhere', items: ["On (the default): Kravickas's patch shows replays, celebrations, cutscenes and menus at your frame rate too.",
+  { head: 'Also replays and cutscenes', items: ["On (the default): Kravickas's patch shows replays, celebrations, cutscenes and menus at your frame rate too.",
     "Off: they keep the game's own pace.",
     'Each player picks their own, online too. NHL 19 uses it from its next start.'] },
 ];
@@ -180,17 +184,18 @@ function BoostCard({ s }) {
   return html`<${Card} title="Boost performance" className="su-boost"
       aside=${html`<${Info} title="Boost performance" sections=${BOOST_INFO}/>`}>
     <div class="card-body">
-      <div class=${cls('su-state', b.tone)}>
+      ${b.tone !== 'good' && html`<div class=${cls('su-state', b.tone)}>
         <span class="su-st">${b.text}</span>
-      </div>
+      </div>`}
       <div class="su-state su-build">
         <span class="su-st">Build</span>
         <${Segmented} options=${builds} value=${b.build} disabled=${!b.can} onChange=${(v) => call('setup_build', v)}/>
-        <${Button} small disabled=${!b.can_update}
+        <span class="su-bacts"><span class="su-bal">Kravickas build:</span>
+        <${Button} small kind="link" disabled=${!b.can_update}
           title=${b.updatable ? "Download Kravickas's newest published build now" : 'For the Kravickas build. Overtime Native comes with Overtime releases: Play NHL 19 gets a new one by itself'}
-          onClick=${() => call('setup_build_update')}>Update<//>
-        ${(b.builds || []).filter((x) => x.updatable).map((x) => html`<${Button} small kind="ghost" title=${`The ${x.label} build's source code (GPL-2.0)`}
-          onClick=${() => call('setup_boost_source', x.id)}>${x.label} source<//>`)}
+          onClick=${() => call('setup_build_update')}>Get newest<//>
+        ${(b.builds || []).filter((x) => x.updatable).map((x) => html`<${Button} small kind="link" title=${`The ${x.label} build's source code (GPL-2.0)`}
+          onClick=${() => call('setup_boost_source', x.id)}>Source code ↗<//>`)}</span>
       </div>
       ${b.news && html`<div class="su-news" title=${b.upstream || ''}>${b.news}</div>`}
       <div class="su-state su-res">
@@ -202,7 +207,7 @@ function BoostCard({ s }) {
         <${Segmented} options=${FRAMERATES} value=${b.framerate} disabled=${noEmu}
           onChange=${(v) => call('setup_framerate', v)}/>
         <span class="su-every" title="On (the default): replays, celebrations, cutscenes and menus follow the frame rate too. Off: they keep the game's own pace.">
-          <${Switch} on=${!!b.everywhere} onChange=${(on) => call('setup_everywhere', on)}>Apply everywhere<//>
+          <${Switch} on=${!!b.everywhere} onChange=${(on) => call('setup_everywhere', on)}>Also replays and cutscenes<//>
         </span>
       </div>
       <div class="su-state su-emu">
@@ -290,13 +295,10 @@ function ProgramCard({ s }) {
   const p = s.program;
   return html`<${Card} title="This program" aside=${`version ${p.version}`} className="su-program">
     <div class="card-body">
-      <div class=${cls('su-newer', p.state.tone)}>
-        <${Mark} tone=${p.state.tone}/><span class="sp">${p.state.text}</span>
-        ${p.newer && html`<${Button} small kind="primary" disabled=${s.busy} onClick=${() => call('setup_check_updates_now')}>Update...<//>`}
-      </div>
       <div class="row">
         <${Checkbox} on=${p.check_on_start} onChange=${(v) => call('setup_check_updates', v)}>Check for updates at start<//>
         <span class="sp"></span>
+        <span class=${cls('su-newest', p.state.tone)}>${p.state.tone === 'good' ? 'Up to date' : p.state.text}</span>
         <${Button} small disabled=${s.busy} onClick=${() => call('setup_check_updates_now')}>Check now<//>
       </div>
     </div>
@@ -321,14 +323,14 @@ function RosterRow({ r, busy }) {
     <span class="su-dot"></span>
     <div class="main">
       <div class="su-name"><span class="n">${r.name}</span>
-        ${r.chips.map((c) => html`<span key=${c.text} class=${cls('chip', c.tone)}>${c.text}</span>`)}</div>
-      <div class="su-meta">${r.meta}</div>
+        ${(r.chips.length ? r.chips : [{ text: / in the game/.test(r.meta) ? 'In game' : 'Save', tone: 'game' }]).map((c) => html`<span key=${c.text} class=${cls('chip', c.tone)}>${c.text}</span>`)}</div>
+      <div class="su-meta">${r.meta.replace(/ · Saved in the game\./, '')}</div>
       ${r.problem && html`<div class="su-problem">${r.problem}</div>`}
     </div>
     ${r.acts && html`<div class="su-acts" onClick=${(e) => e.stopPropagation()}>
       ${r.acts.folder && html`<${Button} small onClick=${() => call('rosters_folder', r.id)}>Open folder<//>`}
-      ${r.acts.delete && html`<${Button} small kind="danger" disabled=${busy || !r.can_delete} title=${r.delete_title}
-        onClick=${() => call('rosters_delete', r.id)}>Delete...<//>`}
+      ${r.acts.delete && html`<${Button} small kind="danger-quiet" disabled=${busy || !r.can_delete} title=${r.delete_title}
+        onClick=${() => call('rosters_delete', r.id)}><svg class="bin-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Delete<//>`}
     </div>`}
   </div>`;
 }
@@ -345,7 +347,7 @@ function RosterCard({ s }) {
     <div class="card-body fill">
       ${s.running && html`<div class="small-note su-warn">shadPS4 is running. Close it before you save or delete a roster.</div>`}
       ${r.can_open && html`<div class=${cls('su-room', r.room_tone)}>
-        <span class="su-count">${r.used} of ${r.max}</span><span class="su-room-text">${r.room_text}</span>
+        <span class="su-count">${r.used} used</span><span class="su-room-text">${r.max - r.used} free of ${r.max} save slots</span>
       </div>`}
       <div class="su-fresh"><span class="su-fl">Start fresh:</span>
         ${r.starts.map((x) => html`<${Button} small key=${x.id} kind=${x.open ? 'pick' : 'ghost'} title=${x.note}
@@ -363,13 +365,13 @@ export default function Setup() {
   if (!s) return null;
   return html`<div class=${cls('columns', 'su', s.first && 'su-first')}>
     <div class="col">
-      <${LinkRow}/>
       <${WhereCard} s=${s}/>
       <${BoostCard} s=${s}/>
       <${ProgramCard} s=${s}/>
     </div>
     <div class="col">
       <${RosterCard} s=${s}/>
+      <${LinkRow}/>
     </div>
   </div>`;
 }

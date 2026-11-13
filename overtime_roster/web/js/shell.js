@@ -30,7 +30,8 @@ function PlayButton({ play }) {
 }
 
 // The Puck Peak apps, top left, mirroring Play (owner 2026-11-13, docs/ui/mockups/apps-promo.html): Blueline (NHL
-// Legacy), Overtime greyed in the middle (this app), Faceoff (NHL 27). Each opens its page; a card tells what it is.
+// Legacy), Overtime in the middle (this app: lit in its own orange, "You are here"), Faceoff (NHL 27), the other two
+// quiet until pointed at (owner 2026-11-13, docs/ui/app-dock-kit/DESIGN.md). Each opens its page; a card tells what it is.
 const APPS = [
   { id: 'blueline', name: 'Blueline', tone: 'blue', title: 'Blueline · NHL Legacy on PC',
     text: 'NHL Legacy Updated and Online with a few clicks. 32 teams, lobbies, edit everything.' },
@@ -104,8 +105,9 @@ export function HelpBar({ status, tip, enter, detailsOpen, onDetails, onEnter })
   const value = has && !indeterminate ? p : 0;
   const text = s.text || tip || '';
   return html`<footer class="helpbar">
-    <${ProgressBar} value=${value} active=${!!s.busy && !indeterminate} indeterminate=${indeterminate}/>
-    <span class="pct">${has && !indeterminate ? Math.round(value * 100) + '%' : ''}</span>
+    ${(s.busy || (has && value < 1)) && html`<${ProgressBar} value=${value} active=${!!s.busy && !indeterminate} indeterminate=${indeterminate}/>`}
+    ${(s.busy || (has && value < 1)) && html`<span class="pct">${has && !indeterminate ? Math.round(value * 100) + '%' : ''}</span>`}
+    ${!s.busy && s.tone === 'good' && html`<span class="done-tick">✓</span>`}
     ${s.amount && html`<span class="amount">[${s.amount}]</span>`}
     <span class=${cls('status', s.text ? s.tone : 'tip')} title=${text}>${text}</span>
     <span class="keys">

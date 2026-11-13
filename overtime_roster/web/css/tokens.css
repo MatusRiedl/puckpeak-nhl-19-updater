@@ -53,6 +53,7 @@
   --blue: #007EEC;           /* COBALT_BLUE: away games, info */
   --blue-soft: #4790D0;      /* LIGHT_BLUE / BLUE_NEUTRAL */
   --good: #31C778;           /* GREEN_POSITIVE */
+  --on: #1F9E5C;             /* switches and checkboxes when on (red = press or pick) */
   --caution: #F8BF00;        /* YELLOW_CAUTION (Legacy's amber) */
   --bad: #E60041;            /* RED_NEGATIVE */
   --gold: #FFEA8A;           /* GOLD */

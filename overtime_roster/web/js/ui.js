@@ -2,7 +2,8 @@
 // Write labels normally ("Save as a new roster"): the CSS makes heads, buttons and tabs caps.
 import { html, cls, useRef, useLayoutEffect, useState, useEffect, useMemo, createPortal } from './lib.js';
 
-// kind: ghost (default) | primary | pick | danger | caution | gold (= featured) | gold-line | featured
+// kind: ghost (default) | primary | pick | danger | danger-quiet (grey until pointed at: Delete in lists) | link (a text
+// action beside a choice) | caution | gold (= featured) | gold-line | featured
 export function Button({ kind = 'ghost', small, big, block, disabled, onClick, title, className, children }) {
   return html`<button type="button" title=${title}
     class=${cls('btn', kind, small && 'small', big && 'big', block && 'block', className)}

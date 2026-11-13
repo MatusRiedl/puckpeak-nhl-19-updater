@@ -99,17 +99,24 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
   font-style: var(--head-style); font-weight: 700; font-size: 15px; letter-spacing: .1em; text-transform: uppercase;
   color: #fff; white-space: nowrap; transition: filter .15s var(--ease); }
 .appdock .dk img { width: 32px; height: 32px; flex: none; }
-.appdock .dk.blue { --c: #1FA3E8; --glow: rgba(31, 163, 232, .45); border-radius: 4px 0 0 4px;
-  background: linear-gradient(180deg, #2BB0F0, #1478C2); box-shadow: 0 4px 14px var(--glow), inset 0 1px 0 rgba(255, 255, 255, .25); }
-.appdock .dk.red { --c: #E8263A; --glow: rgba(232, 38, 58, .45); border-radius: 0 4px 4px 0;
-  background: linear-gradient(180deg, #F03A4C, #B5182A); box-shadow: 0 4px 14px var(--glow), inset 0 1px 0 rgba(255, 255, 255, .25); }
-.appdock .dk.blue img, .appdock .dk.red img { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .5)); }
-.appdock .dk.here { cursor: default; color: var(--text-3); background: linear-gradient(180deg, #3a3f49, #2a2e36);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 0 0 1px var(--line-hi); }
-.appdock .dk.here img { opacity: .55; filter: grayscale(1); }
-.appdock .dk.blue:hover, .appdock .dk.red:hover, .appdock .dk:focus-visible { outline: none; filter: brightness(1.12); }
+/* the other apps: quiet (grey, icon dimmed) until pointed at, then their own colour; the app you are in is lit in its own
+   colour (Overtime's orange) with "You are here" under it (docs/ui/app-dock-kit/DESIGN.md) */
+.appdock .dk.blue { --c: #1FA3E8; border-radius: 4px 0 0 4px; }
+.appdock .dk.red { --c: #E8263A; border-radius: 0 4px 4px 0; }
+.appdock .dk.blue, .appdock .dk.red { background: #23272f; color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line-hi); }
+.appdock .dk.blue img, .appdock .dk.red img { filter: grayscale(.85) brightness(.85); opacity: .8; }
+.appdock .dk.blue:hover, .appdock .dk.blue:focus-visible { background: linear-gradient(180deg, #2BB0F0, #1478C2); color: #fff; }
+.appdock .dk.red:hover, .appdock .dk.red:focus-visible { background: linear-gradient(180deg, #F03A4C, #B5182A); color: #fff; }
+.appdock .dk:hover img, .appdock .dk:focus-visible img { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .5)); opacity: 1; }
+.appdock .dk:focus-visible { outline: none; }
+.appdock .dk.here { --c: #FF8A3D; cursor: default; color: #fff; background: linear-gradient(180deg, #FF8A3D, #D9520F);
+  box-shadow: 0 4px 14px rgba(255, 122, 26, .4), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.appdock .dk.here img { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .5)); }
+.appdock .dk.here::after { content: 'You are here'; position: absolute; left: 0; right: 0; top: calc(100% + 4px); text-align: center;
+  font-size: 9.5px; letter-spacing: .18em; color: #FF8A3D; pointer-events: none; }
+.appdock .dk.here:hover::after { opacity: 0; }
 .appdock .dk:active:not(.here) { transform: translateY(1px); }
-.appdock .tip { position: absolute; top: calc(100% + 8px); left: 0; width: 290px; text-align: left; padding: 10px 12px; border-radius: 4px;
+.appdock .tip { position: absolute; top: calc(100% + 18px); left: 0; width: 290px; text-align: left; padding: 10px 12px; border-radius: 4px;
   background: #161a21; box-shadow: inset 0 0 0 1px var(--c), 0 10px 30px rgba(0, 0, 0, .6); pointer-events: none;
   opacity: 0; transform: translateY(-4px); transition: opacity .15s var(--ease), transform .15s var(--ease);
   font-family: var(--font); font-style: normal; font-weight: 400; letter-spacing: 0; text-transform: none; white-space: normal; }
@@ -121,6 +128,7 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
 .compact .appdock { top: 6px; height: 32px; }
 .compact .appdock .dk { font-size: 13px; }
 .compact .appdock .dk img { width: 24px; height: 24px; }
+.compact .appdock .dk.here::after { display: none; }
 
 /* --- tabs: [L1] Setup · Update · Game patch | Roster · ... · Front office [R1] ------------------------------------------- */
 .tabs { position: relative; z-index: 1; display: flex; justify-content: center; align-items: center; gap: 14px;
@@ -224,6 +232,15 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
 .btn.pick { background: var(--text-soft); color: var(--black); box-shadow: none; }
 .btn.pick:hover:not(:disabled), .btn.pick:focus-visible { background: #fff; box-shadow: inset 0 calc(-1 * var(--focus-bar)) 0 var(--accent); }
 .btn.pick:disabled { background: rgba(38, 42, 49, .6); color: var(--text-off); }
+/* Delete in a list: grey with its bin until pointed at, a gap away from the buttons beside it */
+.btn.danger-quiet { background: transparent; color: var(--text-3); box-shadow: none; margin-left: 10px; }
+.btn.danger-quiet:hover:not(:disabled), .btn.danger-quiet:focus-visible { color: #ff6b8f; background: rgba(230, 0, 65, .14);
+  box-shadow: inset 0 0 0 1px rgba(230, 0, 65, .45); }
+.bin-icon { width: 13px; height: 13px; margin-right: 5px; vertical-align: -2px; }
+/* a text action beside a choice (Get newest, Source code): not a button that looks like one more option */
+.btn.link { background: none; box-shadow: none; color: var(--blue-soft); padding: 0 4px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.btn.link:hover:not(:disabled), .btn.link:focus-visible { color: #8cc0f0; text-decoration: underline; background: none; box-shadow: none; }
+.btn.link:disabled { color: var(--text-off); background: none; }
 .btn.danger { color: #ff6b8f; box-shadow: inset 0 0 0 1px rgba(230, 0, 65, .45); }
 .btn.danger:hover:not(:disabled), .btn.danger:focus-visible { background: rgba(230, 0, 65, .16);
   box-shadow: inset 0 0 0 1px rgba(230, 0, 65, .7), inset 0 calc(-1 * var(--focus-bar)) 0 var(--bad); }
@@ -280,6 +297,7 @@ select.field option { background: var(--panel); color: var(--text-soft); }
 .chip.bad { background: rgba(230, 0, 65, .18); color: #ff6b8f; }
 .chip.caution { background: rgba(248, 191, 0, .14); color: var(--caution); }
 .chip.info { background: rgba(0, 126, 236, .18); color: #6fb6ff; }
+.chip.game { background: rgba(255, 255, 255, .07); color: var(--text-2); }
 .chip.accent { background: rgba(255, 93, 84, .18); color: var(--accent); }
 
 /* checkbox */
@@ -287,15 +305,15 @@ select.field option { background: var(--panel); color: var(--text-soft); }
 .check .box { width: 18px; height: 18px; flex: none; box-shadow: inset 0 0 0 2px var(--text-3); display: grid; place-items: center;
   transition: background-color .15s, box-shadow .15s; }
 .check:hover .box { box-shadow: inset 0 0 0 2px var(--text-soft); }
-.check.on .box { background: var(--accent); box-shadow: none; }
+.check.on .box { background: var(--on); box-shadow: none; }
 .check .box svg { width: 12px; height: 12px; opacity: 0; transform: scale(.4); transition: opacity .15s, transform .2s var(--ease); }
 .check.on .box svg { opacity: 1; transform: scale(1); }
 .check.disabled { opacity: .5; cursor: default; }
 
-/* switch: square, NHL 19's red when on */
+/* switch: square, green when on (red is kept for what you press or pick: owner 2026-11-13) */
 .toggle { position: relative; width: 44px; height: 22px; border: 0; padding: 0; flex: none; cursor: pointer;
   background: var(--text-off); transition: background-color .2s; }
-.toggle.on { background: var(--accent); box-shadow: 0 0 10px var(--glow); }
+.toggle.on { background: var(--on); }
 .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff;
   box-shadow: 0 1px 2px rgba(0,0,0,.4); transition: transform .22s var(--ease); }
 .toggle.on::after { transform: translateX(22px); }
@@ -432,6 +450,9 @@ select.field option { background: var(--panel); color: var(--text-soft); }
 .helpbar .status.caution { color: var(--caution); }
 .helpbar .status.info { color: var(--text); }
 .helpbar .status.tip { color: var(--text-2); font-weight: 400; }
+/* idle and all well: a green tick instead of a full red bar */
+.helpbar .done-tick { width: 18px; height: 18px; flex: none; display: inline-grid; place-items: center; background: rgba(49, 199, 120, .18);
+  color: var(--good); font-size: 12px; font-weight: 700; }
 .helpbar .pct { width: 38px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .helpbar .amount { flex: none; white-space: nowrap; color: var(--text-2); font-size: 14px; font-weight: 600;
   font-variant-numeric: tabular-nums; }

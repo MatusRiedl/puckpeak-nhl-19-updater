@@ -269,3 +269,29 @@
   .emu-cols { grid-template-columns: minmax(0, 1fr); }
   .emu-groups { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* 2026-11-13 design pass (docs/ui/app-dock-kit/DESIGN.md) ------------------------------------------------------------------- */
+/* Where is NHL 19?: the game and the emulator each on a labelled line; the four checks in place of the green sentence */
+.tab-setup .su-pathrow { align-items: center; }
+.tab-setup .su-paths { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tab-setup .su-path { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tab-setup .su-path > :last-child { flex: 1; min-width: 0; }
+.tab-setup .su-pl { flex: none; width: 74px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.tab-setup .su-checkrow { justify-content: space-between; }
+.tab-setup .su-chips { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.tab-setup .su-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--text-soft); }
+/* Boost: the build choice, then Kravickas's actions as text */
+.tab-setup .su-boost .card-body > .su-build:first-child { margin-top: 0; }
+.tab-setup .su-bacts { display: inline-flex; align-items: center; gap: 6px; margin-left: 14px; padding-left: 14px; border-left: 1px solid var(--line-hi); }
+.tab-setup .su-bal { font-size: 12.5px; color: var(--text-3); }
+/* This program: one row */
+.tab-setup .su-newest { font-size: 13.5px; font-weight: 600; color: var(--text-2); margin-right: 10px; }
+.tab-setup .su-newest.good { color: var(--good); }
+.tab-setup .su-newest.good::before { content: '✓  '; }
+.tab-setup .su-newest.caution { color: var(--caution); }
+/* Discord and coffee: under the rosters, smaller */
+.tab-setup .col > .su-links { margin-top: auto; }
+.tab-setup .col > .su-links .su-discord { padding: 8px 14px; font-size: 14px; }
+.tab-setup .col > .su-links .su-discord .sub { display: none; }
+.tab-setup .col > .su-links .su-kofi { padding: 6px 12px; }
+.tab-setup .col > .su-links .su-kofi .t { font-size: 14px; }
