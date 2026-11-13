@@ -627,7 +627,7 @@ class MultiplayerCtl(Part):
 
     def ready(self, value=True):
         """Ready: first the game is made fit for online play with no click (owner 2026-11-08: "we just handle all
-        things for him"): the published Kravickas build of shadPS4 (Setup.online_boost), the patch file of this version
+        things for him"): the published lobby build of shadPS4 (Setup.online_boost), the patch file of this version
         (patch_ctl.refresh_network) and, for a game without the patch, the eboot patch alone (patch_ctl.online_minimum). Then the lobby is told. A job: the
         card shows what it does (`prep`)."""
         with self.mlock:
@@ -681,7 +681,7 @@ class MultiplayerCtl(Part):
         try:
             got = setup.online_boost(self._prep_note)
         except Exception as err:    # noqa: BLE001
-            jobs.log_block(err, 'Kravickas build before an online Ready')
+            jobs.log_block(err, 'Lobby build before an online Ready')
             got = 'it did not install'
         if got == 'none published':
             why.append('the NHL 19 build of shadPS4 is not on the Overtime server right now')

@@ -2,6 +2,27 @@
 
 What changed in each version, for players.
 
+## 0.92.0 (2026-11-13)
+
+### Added
+
+- **Overtime Native**, Overtime's own build of shadPS4 for NHL 19, first on Setup's Boost card and the default. It is
+  the build a Multiplayer lobby starts. Play NHL 19 downloads it and keeps it current by itself. Source code (GPL-2.0):
+  github.com/MatusRiedl/shadPS4, branch `overtime-nightly`.
+- **Kravickas's fix for the "Out of order flip IRQ" crash** is in both builds. Overtime Native also keeps the game
+  running if one still arrives.
+- **NHL 19 starts at above-normal priority** with Windows power throttling off, on both builds, for steadier frames.
+
+### Changed
+
+- **Kravickas's build is second on the card**, now his newer test build. The Update button and the source button are
+  for this build.
+- **Frame rate defaults to Unlocked.** A Frame rate of 60 or 120 FPS moves to Unlocked once with this update; pick
+  yours again on the Boost card and it stays.
+- **Apply everywhere is on by default**, and switched on once with this update.
+- **Log "Write at once" is off by default** (Game settings, Log), and switched off once with this update.
+- **Your build moves to Overtime Native once** with this update. Pick Kravickas on the Boost card to go back.
+
 ## 0.91.1 (2026-11-13)
 
 ### Added

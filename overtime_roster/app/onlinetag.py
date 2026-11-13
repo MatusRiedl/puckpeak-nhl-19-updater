@@ -45,11 +45,21 @@ TRUSTED_EXES = {'fe88293d67e4e9ab6d0799ac6dcff84644def7806ff0d03b028967cbfdf0e99
                 # 4788f0b, the Nightly (and the lobby build once the server pins it). Its cpu_patches, linker and
                 # memory_patcher are upstream's, which 749170d merged; the two differ in GPU/shader/videoout code only
                 # (docs/notes/shadps4-builds.md "Upstream nightly 4788f0b vs ours"). It reads General.redzone_patches.
-                'b04e3a3c90837ccb28fd08865b2e95dc114497cb08e43571b07914f1e351442e': 'upstream shadPS4 nightly 4788f0b'}
-# 0.90.2: the Nightly build on Setup's card (upstream's official zip). Its exe sha in the tag: Nightly players meet each
-# other in open matchmaking.
-NIGHTLY_EXES = {'b04e3a3c90837ccb28fd08865b2e95dc114497cb08e43571b07914f1e351442e': 'upstream shadPS4 nightly 4788f0b'}
-MARK = '; Overtime Roster: matchmaking tag (only games that stay in step meet). Unpatch removes this file.'
+                'b04e3a3c90837ccb28fd08865b2e95dc114497cb08e43571b07914f1e351442e': 'upstream shadPS4 nightly 4788f0b',
+                # 0.92.0, provisional like the two above: Kravickas's CI build of nhl-test d334436 (upstream main past
+                # 4788f0b + his flip fix, videoout/liverpool only); and Overtime's fork build (4788f0b + lazy commit,
+                # input poll thread, the same flip fix: no CPU math change), an earlier test build of Overtime Native
+                '07cb6ca830ebc8c263668c0d0d779ea03ba80d1bb0d7d308e212b259344cc280': 'Kravickas nhl-test d334436',
+                'fc8fa6a79c4ac972c838a1a4578396be22023ec1325b582b729f8f9e1bef1d19': 'Overtime nightly dab14f34 (4788f0b)',
+                # 2026-11-13, "Overtime Native" (0.92.0's default and lobby build): dab14f34 + the texture collector's
+                # ages in seconds (OVERTIME_GC_SECONDS, texture cache only: no CPU math change)
+                '5b743815321f8dfdb8e3690299d8a7fb9a41757bc22ba424084ce5a3341cda17':
+                    'Overtime Native dab14f34 + collector seconds (4788f0b)'}
+# The online build: Overtime Native on Setup's card (0.92.0, owner 2026-11-13), the default and what a lobby starts. The
+# exe's sha is in the tag, so a player on another trusted build (Kravickas, an older one) has another tag (why()).
+ONLINE_EXES = {'5b743815321f8dfdb8e3690299d8a7fb9a41757bc22ba424084ce5a3341cda17':
+               'Overtime Native dab14f34 + collector seconds (4788f0b)'}
+MARK ='; Overtime Roster: matchmaking tag (only games that stay in step meet). Unpatch removes this file.'
 TMP = '.overtime-tmp'
 
 
@@ -181,12 +191,14 @@ def why(inp):
     if inp.get('foreign'):
         return (f"Another mod's versioninfo.ini in the NHL 19-mods folder sets your online version "
                 f"({inp['foreign']}), so Overtime's matchmaking tag is not used: you meet only games with that one.")
-    if inp['sha'] in NIGHTLY_EXES:
-        reasons.append('it runs the Nightly build, so open matchmaking pairs it with Nightly players (a Multiplayer '
-                       'lobby starts the lobby build by itself)')
-    elif inp['sha'] not in TRUSTED_EXES:
-        reasons.append("this shadPS4 is not the online build (choose Kravickas on Setup's Boost performance card: "
-                       'that is the one; a Multiplayer lobby plays on it too)')
+    if inp['sha'] in ONLINE_EXES:
+        pass
+    elif inp['sha'] in TRUSTED_EXES:
+        reasons.append('it does not run the Overtime Native build, so open matchmaking pairs it with players on its '
+                       'own build (a Multiplayer lobby starts the lobby build by itself)')
+    else:
+        reasons.append("this shadPS4 is not the online build (choose Overtime Native on Setup's Boost performance "
+                       'card: that is the one; a Multiplayer lobby plays on it too)')
     if not inp['crossvendor']:
         reasons.append('the Cross-CPU fix is not in the patch (it needs the v1.60 eboot.bin)')
     if gamesetup.amd_math_needed() and not inp['key']:

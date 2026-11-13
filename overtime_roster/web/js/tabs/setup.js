@@ -136,21 +136,24 @@ function WhereCard({ s }) {
   <//>`;
 }
 
-// --- Boost performance: the shadPS4 build the green Play NHL 19 button starts, Nightly or Kravickas -------------------------
+// --- Boost performance: the shadPS4 build the green Play NHL 19 button starts, Overtime Native or Kravickas -----------------
 const BOOST_INFO = [
   { head: 'What it does', items: ['Picks the shadPS4 build that the green Play NHL 19 button starts. The lit one is in use.',
-    "Nightly (the default): upstream shadPS4's newest official build. Kravickas: Overtime's smooth build on Kravickas's NHL 19 fixes.",
-    'Play downloads the chosen build the first time, and again when a newer one is published. Update gets it now.',
+    "Overtime Native (the default): Overtime's own build of shadPS4 for NHL 19, with less RAM reserved, lighter controller polling, steadier frames and the fix for the \"Out of order flip IRQ\" crash. New versions come with Overtime releases.",
+    "Kravickas: Kravickas's NHL 19 build, with his fix for the same crash. Update gets his newest published build now.",
+    'Play downloads the chosen build the first time, and again when a newer one is published.',
     'Saves, patch and ShadNet login stay the same with either build.'] },
-  { head: 'Online', items: ['Multiplayer lobbies start the lobby build by themselves, whichever one is chosen here.',
+  { head: 'Online', items: ['Multiplayer lobbies start the lobby build (Overtime Native) by themselves, whichever one is chosen here.',
     'Open matchmaking pairs you with players on the same build.'] },
+  { head: 'Source code (GPL-2.0)', items: ['Overtime Native: github.com/MatusRiedl/shadPS4, branch overtime-nightly.',
+    'Kravickas: the Kravickas source button on the card.'] },
   { head: 'Your own shadPS4', items: ['It stays where it is, untouched.',
     'A portable shadPS4 with its own "user" folder keeps playing itself: the builds would not find its saves.'] },
   { head: 'Resolution', items: ["1080p is the game's own. 1440p renders at 2560x1440 (Kravickas's patch): sharper, needs a stronger GPU.", "720p renders at 1280x720 (Kravickas's patch): softer, for a weaker GPU.", '1440p also sets Additional DMem to 3500 MB; 720p and 1080p put your own value back.', 'Works with either build. Takes effect at the next start of NHL 19.'] },
-  { head: 'Frame rate', items: ['60 (the default), 120 or Unlocked: how fast NHL 19 runs (shadPS4\'s vblank).',
+  { head: 'Frame rate', items: ['60, 120 or Unlocked (the default): how fast NHL 19 runs (shadPS4\'s vblank).',
     'Online, players on different frame rates play together fine. NHL 19 uses a new choice from its next start.'] },
-  { head: 'Apply everywhere', items: ["Off (the default): replays, celebrations, cutscenes and menus keep the game's own pace.",
-    "On: Kravickas's patch shows them at your frame rate too. Experimental: NHL 19 might crash with \"Out of order flip IRQ\"; turn it off if NHL 19 closes by itself during a game.",
+  { head: 'Apply everywhere', items: ["On (the default): Kravickas's patch shows replays, celebrations, cutscenes and menus at your frame rate too.",
+    "Off: they keep the game's own pace.",
     'Each player picks their own, online too. NHL 19 uses it from its next start.'] },
 ];
 const RESOLUTIONS = [
@@ -160,9 +163,9 @@ const RESOLUTIONS = [
 ];
 
 const FRAMERATES = [
-  { value: 60, label: '60 fps', title: "The console's frame rate (the default)" },
-  { value: 120, label: '120 fps', title: 'Smoother, for a 120 Hz or faster screen' },
-  { value: 9999, label: 'Unlocked', title: 'As fast as your PC runs it' },
+  { value: 60, label: '60 fps', title: "The console's frame rate" },
+  { value: 120, label: '120 fps', title: 'Capped at 120: a late frame waits for the next tick' },
+  { value: 9999, label: 'Unlocked', title: 'As fast as your PC runs it, each frame shown when it is done (the default)' },
 ];
 
 function BoostCard({ s }) {
@@ -172,7 +175,8 @@ function BoostCard({ s }) {
   const why = noEmu ? 'Find NHL 19 first' : undefined;
   const shut = () => setView(null);
   const builds = (b.builds || []).map((x) => ({ value: x.id, label: x.label,
-    title: x.id === 'nightly' ? "Upstream shadPS4's newest official build" : "Overtime's smooth build on Kravickas's NHL 19 fixes" }));
+    title: x.id === 'nightly' ? "Overtime's own build of shadPS4 for NHL 19 (the default, and the lobby build)"
+      : "Kravickas's NHL 19 build" }));
   return html`<${Card} title="Boost performance" className="su-boost"
       aside=${html`<${Info} title="Boost performance" sections=${BOOST_INFO}/>`}>
     <div class="card-body">
@@ -182,8 +186,11 @@ function BoostCard({ s }) {
       <div class="su-state su-build">
         <span class="su-st">Build</span>
         <${Segmented} options=${builds} value=${b.build} disabled=${!b.can} onChange=${(v) => call('setup_build', v)}/>
-        <${Button} small disabled=${!b.can_update} title="Download the chosen build now" onClick=${() => call('setup_build_update')}>Update<//>
-        <${Button} small kind="ghost" title="The chosen build's source code (GPL-2.0)" onClick=${() => call('setup_boost_source')}>Source code<//>
+        <${Button} small disabled=${!b.can_update}
+          title=${b.updatable ? "Download Kravickas's newest published build now" : 'For the Kravickas build. Overtime Native comes with Overtime releases: Play NHL 19 gets a new one by itself'}
+          onClick=${() => call('setup_build_update')}>Update<//>
+        ${(b.builds || []).filter((x) => x.updatable).map((x) => html`<${Button} small kind="ghost" title=${`The ${x.label} build's source code (GPL-2.0)`}
+          onClick=${() => call('setup_boost_source', x.id)}>${x.label} source<//>`)}
       </div>
       ${b.news && html`<div class="su-news" title=${b.upstream || ''}>${b.news}</div>`}
       <div class="su-state su-res">
@@ -194,10 +201,9 @@ function BoostCard({ s }) {
         <span class="su-st">Frame rate</span>
         <${Segmented} options=${FRAMERATES} value=${b.framerate} disabled=${noEmu}
           onChange=${(v) => call('setup_framerate', v)}/>
-        <span class="su-every" title="Off (the default): replays, celebrations, cutscenes and menus keep the game's own pace. On: they follow the frame rate too (experimental).">
+        <span class="su-every" title="On (the default): replays, celebrations, cutscenes and menus follow the frame rate too. Off: they keep the game's own pace.">
           <${Switch} on=${!!b.everywhere} onChange=${(on) => call('setup_everywhere', on)}>Apply everywhere<//>
         </span>
-        ${b.everywhere && html`<span class="su-exp">Experimental: NHL 19 might crash with "Out of order flip IRQ"</span>`}
       </div>
       <div class="su-state su-emu">
         <span class="su-st">Settings</span>

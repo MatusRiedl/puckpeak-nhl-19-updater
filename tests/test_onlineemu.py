@@ -91,15 +91,15 @@ def test_start_dir_follows_the_players_own_data(home, monkeypatch):
 
 
 def test_the_pack_follows_the_servers_pin(monkeypatch):
-    """0.90.2: lobbies play whichever pack the server pins: the Nightly pack when its digest is the pin, else the
-    Kravickas pack (also for no pin or an unknown digest)."""
+    """0.90.2: lobbies play whichever pack the server pins. 0.92.0 (owner 2026-11-13): with no pin or an unknown
+    digest it is the Overtime Native pack (Kravickas before)."""
     class Rel:
         def __init__(self, digest):
             self.digest = digest
     table = {packdownload.EMULATOR_PACK: Rel('a' * 64), packdownload.NIGHTLY_PACK: Rel('B' * 64)}
     assert onlineemu.pack_for('b' * 64, table) == packdownload.NIGHTLY_PACK
     assert onlineemu.pack_for('a' * 64, table) == packdownload.EMULATOR_PACK
-    assert onlineemu.pack_for('c' * 64, table) == onlineemu.PACK == packdownload.EMULATOR_PACK
+    assert onlineemu.pack_for('c' * 64, table) == onlineemu.PACK == packdownload.NIGHTLY_PACK
     assert onlineemu.pack_for(None, table) == onlineemu.PACK
     assert onlineemu.pack_for('b' * 64, {}) == onlineemu.PACK
 

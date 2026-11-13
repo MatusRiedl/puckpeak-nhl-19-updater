@@ -202,7 +202,6 @@
 .tab-setup .su-emu, .tab-setup .su-build, .tab-setup .su-res { flex-wrap: wrap; }
 .tab-setup .su-emu .su-st, .tab-setup .su-build .su-st, .tab-setup .su-res .su-st { flex: 0 0 auto; min-width: 66px; }
 .tab-setup .su-every { margin-left: 6px; color: var(--text); }
-.tab-setup .su-exp { flex-basis: 100%; padding-left: 74px; font-size: 12px; color: var(--caution); }
 .emu-ico { width: 17px; height: 14px; flex: none; }
 .modal.emu-modal { width: min(960px, calc(100% - 32px)); }
 .modal.emu-game { height: min(760px, calc(100% - 48px)); }

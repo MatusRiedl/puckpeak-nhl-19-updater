@@ -170,12 +170,14 @@ def test_defaults_without_patch_readbacks_always_pro_and_shader_cache_once(user,
     wrote = emusettings.apply_defaults(str(user), True)
     cfg = _read(user)
     assert sorted(wrote) == ['GPU.direct_memory_access_enabled', 'GPU.readback_linear_images_enabled',
-                             'GPU.readbacks_mode', 'GPU.vblank_frequency', 'General.extra_dmem_in_mbytes',
-                             'General.neo_mode', 'Vulkan.pipeline_cache_enabled']
-    # owner 2026-11-11: direct memory access and DMem 3500 by default, not locked; 2026-11-13 (0.91.1): vblank 60
-    assert emusettings.frame_rate(str(user)) == 60
-    assert cfg['GPU']['vblank_frequency'] == 60 and cfg['GPU']['direct_memory_access_enabled'] is True
-    assert cfg['General']['extra_dmem_in_mbytes'] == 3500
+                             'GPU.readbacks_mode', 'GPU.vblank_frequency',
+                             'General.neo_mode', 'Log.sync', 'Vulkan.pipeline_cache_enabled']
+    # owner 2026-11-11: direct memory access by default, not locked; 2026-11-13: vblank 9999 (Unlocked), log sync off
+    assert emusettings.frame_rate(str(user)) == 9999 and emusettings.log_sync(str(user)) is False
+    assert cfg['GPU']['vblank_frequency'] == 9999 and cfg['GPU']['direct_memory_access_enabled'] is True
+    assert cfg['Log']['sync'] is False
+    # 2026-11-13: no DMem 3500 for everyone any more (NHL 19 maps all the direct memory there is; perf-ram.md)
+    assert 'extra_dmem_in_mbytes' not in cfg['General'] and emusettings.dmem(str(user)) == 0
     assert not {'GPU.vblank_frequency', 'GPU.direct_memory_access_enabled', 'General.extra_dmem_in_mbytes'} & set(emusettings.locks())
     assert cfg['GPU']['readbacks_mode'] == 2 and cfg['GPU']['readback_linear_images_enabled'] is True
     assert cfg['General']['neo_mode'] is True and cfg['Vulkan']['pipeline_cache_enabled'] is True
@@ -193,7 +195,20 @@ def test_defaults_without_patch_readbacks_always_pro_and_shader_cache_once(user,
     assert _read(user)['GPU']['vblank_frequency'] == 60                              # changed back by the player: stays
 
 
-def test_the_dmem_default_never_lowers_a_bigger_value(user, monkeypatch):
+def test_write_at_once_reads_and_saves_through_the_real_file(user, monkeypatch):
+    # owner 2026-11-13: the Log "Write at once" once-move (setup_controller._logsync_move) reads and writes these
+    monkeypatch.setattr(overlay, 'emulator_running', lambda: False)
+    monkeypatch.setattr(matchsetup, 'active', lambda: False)
+    assert emusettings.log_sync(str(user)) is True                  # shadPS4's own default
+    _write(user, {'Log': {'sync': True, 'filter': '*:Info Lib.Net:Debug'}})
+    assert emusettings.save(str(user), {emusettings.LOG_SYNC_ID: False}) == ['Log.sync']
+    assert emusettings.log_sync(str(user)) is False
+    assert _read(user)['Log'] == {'sync': False, 'filter': '*:Info Lib.Net:Debug'}     # the player's filter stays
+    emusettings.save(str(user), {emusettings.LOG_SYNC_ID: True})    # on again for a crash report
+    assert emusettings.log_sync(str(user)) is True
+
+
+def test_the_defaults_never_change_a_dmem_value(user, monkeypatch):
     monkeypatch.setattr(overlay, 'emulator_running', lambda: False)
     monkeypatch.setattr(matchsetup, 'active', lambda: False)
     emusettings.apply_defaults(str(user), True)
@@ -307,8 +322,10 @@ def test_a_look_that_finds_the_game_sets_the_defaults_once(sc, monkeypatch):  # 
     cfg = json.loads((user / 'custom_configs' / TITLE).read_text(encoding='utf-8'))
     assert cfg['GPU']['readbacks_mode'] == 2 and cfg['General']['neo_mode'] is True
     key = os.path.normcase(os.path.abspath(str(user)))
-    assert sc.ctl.prefs['setup']['defaults_done'] == [key, SC.FPS_MOVE + key]   # a new folder starts at 60
-    assert cfg['GPU']['vblank_frequency'] == 60
+    # starts Unlocked, "Write at once" off, no DMem
+    assert sc.ctl.prefs['setup']['defaults_done'] == [key, SC.UNLOCK_MOVE + key, SC.LOGSYNC_MOVE + key, SC.DMEM_MOVE + key]
+    assert 'extra_dmem_in_mbytes' not in cfg['General']
+    assert cfg['GPU']['vblank_frequency'] == 9999 and cfg['Log']['sync'] is False
     cfg['General']['neo_mode'] = False                              # the player turns PS4 Pro mode off
     cfg['GPU']['readbacks_mode'] = 1
     (user / 'custom_configs' / TITLE).write_text(json.dumps(cfg), encoding='utf-8')

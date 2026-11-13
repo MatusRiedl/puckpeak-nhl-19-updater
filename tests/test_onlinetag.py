@@ -11,7 +11,7 @@ from overtime_roster.app import gamesetup, launch, matchsetup, onlinetag
 from test_gamesetup import _versioninfo, world  # noqa: F401 (the fixture)
 
 SERVER = ('ot.puckpeak.com', 'https://91.98.195.150/')
-TRUSTED = next(iter(onlinetag.TRUSTED_EXES))
+TRUSTED = next(iter(onlinetag.ONLINE_EXES))      # the online build (Overtime Native): trusted, and why() has no remark
 
 
 @pytest.fixture
@@ -67,14 +67,23 @@ def test_math_class_puts_intel_with_the_key_on_the_trusted_build_with_amd():
 def test_both_kravickas_builds_are_trusted_and_an_intel_pc_on_either_meets_amd():
     """0.82.0 moves Boost and lobbies to 749170d; an Intel player still on b23fb67 (own Boost copy) keeps the AMD class,
     so the builds' tags differ only by the exe (the server's pin sets which one lobbies play). 0.90.0 adds Overtime's
-    smooth build on 749170d (same CPU math); 0.90.2 the upstream nightly 4788f0b (redzone patches merged upstream)."""
+    smooth build on 749170d (same CPU math); 0.90.2 the upstream nightly 4788f0b (redzone patches merged upstream); 0.92.0
+    Kravickas's nhl-test d334436 and Overtime's nightly on 4788f0b (flip fix, no CPU math change)."""
     assert sorted(onlinetag.TRUSTED_EXES.values()) == ['Kravickas NHL19-Build 749170d', 'Kravickas NHL19-Build b23fb67',
+                                                      'Kravickas nhl-test d334436',
+                                                      # 2026-11-13: + the collector's ages in seconds (texture cache)
+                                                      'Overtime Native dab14f34 + collector seconds (4788f0b)',
+                                                      'Overtime nightly dab14f34 (4788f0b)',
                                                       'Overtime smooth c97b8b51 (Kravickas 749170d)',
                                                       'upstream shadPS4 nightly 4788f0b']
     for sha in onlinetag.TRUSTED_EXES:
         assert len(sha) == 64 and sha == sha.lower()
         assert onlinetag.math_class(sha, 'intel', True) == 'amd' and onlinetag.math_class(sha, 'intel', False) != 'amd'
-    new, old, smooth, nightly = sorted(onlinetag.TRUSTED_EXES, key=onlinetag.TRUSTED_EXES.get)
+    new, old, krav_test, ours_gc, ours, smooth, nightly = sorted(onlinetag.TRUSTED_EXES, key=onlinetag.TRUSTED_EXES.get)
+    # owner 2026-11-13: Overtime Native (ours_gc) is the online build; every other trusted exe is another tag
+    assert list(onlinetag.ONLINE_EXES) == [ours_gc] and onlinetag.ONLINE_EXES[ours_gc] == onlinetag.TRUSTED_EXES[ours_gc]
+    assert onlinetag.compute('NHL19_1.60', 'f' * 20, ours_gc, 'amd') != onlinetag.compute('NHL19_1.60', 'f' * 20, ours, 'amd')
+    assert onlinetag.compute('NHL19_1.60', 'f' * 20, krav_test, 'amd') != onlinetag.compute('NHL19_1.60', 'f' * 20, ours, 'amd')
     assert onlinetag.compute('NHL19_1.60', 'f' * 20, nightly, 'amd') != onlinetag.compute('NHL19_1.60', 'f' * 20, new, 'amd')
     assert onlinetag.compute('NHL19_1.60', 'f' * 20, smooth, 'amd') != onlinetag.compute('NHL19_1.60', 'f' * 20, new, 'amd')
     assert onlinetag.compute('NHL19_1.60', 'f' * 20, new, 'amd') != onlinetag.compute('NHL19_1.60', 'f' * 20, old, 'amd')
@@ -159,6 +168,21 @@ def test_an_unknown_eboot_or_another_exe_meets_only_its_own_kind(game, monkeypat
     monkeypatch.setattr(onlinetag, 'exe_sha', lambda path: '0' * 64)
     other = onlinetag.start_inputs(emu, gd)
     assert onlinetag.tag(other) != onlinetag.tag(bare) and 'Boost performance' in onlinetag.why(other)
+    assert 'choose Overtime Native' in onlinetag.why(other)
+
+
+def test_only_overtime_native_is_the_online_build(game, monkeypatch):
+    # owner 2026-11-13 (0.92.0): Overtime Native is the default and lobby build; a Kravickas player is told they meet
+    # their own build, and nobody is sent to Kravickas any more
+    gd, emu = str(game['game']), str(game['emu'])
+    native = onlinetag.start_inputs(emu, gd)
+    assert onlinetag.why(native) == ''
+    krav = next(s for s, n in onlinetag.TRUSTED_EXES.items() if n == 'Kravickas nhl-test d334436')
+    monkeypatch.setattr(onlinetag, 'exe_sha', lambda path: krav)
+    other = onlinetag.start_inputs(emu, gd)
+    said = onlinetag.why(other)
+    assert onlinetag.tag(other) != onlinetag.tag(native) and other['math'] == native['math'] == 'amd'
+    assert 'does not run the Overtime Native build' in said and 'Nightly' not in said and 'choose' not in said
 
 
 def test_intel_meets_amd_only_with_the_key_on_the_trusted_build(game, monkeypatch):

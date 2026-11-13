@@ -142,8 +142,12 @@ def _pack_text(row):
     return f'Not downloaded{size}. Press Download.'
 
 
-FPS_MOVE = 'fps60:'      # defaults_done entry: this data folder's 120 / 9999 -> 60 move is done (0.91.1; 0.91.0's
-                         # 9999 -> 120 move wrote 'fps120:')
+FPS_MOVE = 'fps60:'      # defaults_done entry of 0.91.1 (its 120 / 9999 -> 60 move; 0.91.0's 9999 -> 120 wrote 'fps120:')
+FPS120_MOVE = 'fps120b:'    # defaults_done entry of 0.92.0's first build (its 60 -> 120 move); no longer written
+UNLOCK_MOVE = 'fps9999:'    # defaults_done entry: this data folder's 60 / 120 -> Unlocked move is done (owner 2026-11-13)
+LOGSYNC_MOVE = 'logsync0:'  # defaults_done entry: this data folder's Log "Write at once" on -> off move is done
+REBUILD = '0.92.0'      # setup pref 'rebuild': the 0.92.0 defaults (boost.DEFAULT build, Apply everywhere on) were put in once
+DMEM_MOVE = 'dmem0:'     # defaults_done entry: this data folder's first-default DMem 3500 -> 0 at 1080p / 720p is done
 
 
 class SetupController(Part):
@@ -189,9 +193,11 @@ class SetupController(Part):
         self.dl_stop = False    # a pack switched off while it downloads
         self.asked = set()      # the core asset switches (patch_ctl.PACK_KEYS) switched on here: their packs download
         self.first_assets = bool(ctl.prefs.get('first_assets'))  # a new install's asset packs still to download
-        # the shadPS4 builds (boost.py): the one chosen on the Boost performance card (Nightly from the first start,
-        # owner 2026-11-11), and {emulator: the player's own shadPS4, sha: {build: sha256 of the pack in place}}
-        self.build = boost.name_of(prefs.get('build'))
+        # the shadPS4 builds (boost.py): the one chosen on the Boost performance card (Overtime Native from the first start
+        # and, once, for every app before 0.92.0: owner 2026-11-13), and {emulator: the player's own shadPS4, sha: {build:
+        # sha256 of the pack in place}}
+        rebuilt = prefs.get('rebuild') == REBUILD
+        self.build = boost.name_of(prefs.get('build')) if rebuilt else boost.DEFAULT
         old = prefs.get('boost') or {}
         sha = {b: s for b, s in (old.get('sha') or {}).items() if b in boost.BUILDS and isinstance(s, str)}
         if isinstance(old.get('sha256'), str):      # apps before 0.90.2: the Kravickas build's
@@ -203,7 +209,9 @@ class SetupController(Part):
         self.defaults_done = [d for d in prefs.get('defaults_done') or [] if isinstance(d, str)]
         self.cpu = dict(CPU_IDLE)   # Check my CPU (cpucheck.py): the run and its last result, this session only
         self.resolution = prefs.get('resolution') if prefs.get('resolution') in xmlpatch.RESOLUTIONS else 1080
-        self.replays60 = prefs.get('replays60') is True     # Apply everywhere (0.91.1, off by default): 60 FPS replays
+        # Apply everywhere (60 FPS replays block): on by default from 0.92.0, and on once for apps before it (0.91.1 had
+        # it off by default)
+        self.replays60 = prefs.get('replays60') is not False if rebuilt else True
         gamesetup.set_display(prefs.get('display'))     # Game settings' display mode (default borderless)
         # Folders list: what the player set by hand ({'emulator': bool, 'game': bool, 'saves': bool, 'data': path,
         # 'cache': path (paths.cache_dir reads it from the settings itself)}); a
@@ -215,7 +223,7 @@ class SetupController(Part):
     def _remember(self):
         self.ctl.remember(setup={'emulator': self.emulator, 'skipped': self.skipped, 'boost': self.boost,
                                  'build': self.build, 'defaults_done': list(self.defaults_done),
-                                 'resolution': self.resolution, 'replays60': self.replays60,
+                                 'resolution': self.resolution, 'replays60': self.replays60, 'rebuild': REBUILD,
                                  'display': gamesetup.display_mode(),
                                  'custom': dict(self.custom),
                                  'server': {k: v for k, v in self.server.items() if v != SERVER.get(k)}})
@@ -401,8 +409,8 @@ class SetupController(Part):
 
     def _defaults(self, found=None):
         """Game settings without Patch, once a game is found (owner 2026-11-11, 0.90.2): Readbacks Precise and Readback
-        linear images every time; PS4 Pro mode, Shader cache, Direct memory access, Frame rate 60 and DMem 3500 once
-        per data folder (emusettings.apply_defaults, FIRST_DEFAULTS).
+        linear images every time; PS4 Pro mode, Shader cache, Direct memory access, Frame rate Unlocked and Log "Write
+        at once" off once per data folder (emusettings.apply_defaults, FIRST_DEFAULTS).
         While the game runs or a match is set up, the next look does it."""
         f = found if found is not None else (self.found or {})
         emu = self.known_emulator()
@@ -419,31 +427,78 @@ class SetupController(Part):
         if first:
             with self.ctl.lock:
                 self.defaults_done.append(key)
-                self.defaults_done.append(FPS_MOVE + key)   # a new folder starts at 60 already
+                self.defaults_done.append(UNLOCK_MOVE + key)    # a new folder starts Unlocked already
+                self.defaults_done.append(LOGSYNC_MOVE + key)   # with "Write at once" off
+                self.defaults_done.append(DMEM_MOVE + key)  # and without the 3500 DMem
                 self._remember()
         if wrote:
             self.ctl.host.log(f"Game settings set without Patch: {', '.join(wrote)} ({user})")
         self._fps_move(user, key)
+        self._logsync_move(user, key)
+        self._dmem_move(user, key)
 
-    def _fps_move(self, user, key):
-        """Once per data folder (0.91.1, owner 2026-11-13: "default setting to 60 fps"): Frame rate 120 (0.91.0's first
-        default) or Unlocked (9999, the one before) becomes 60 fps, after the Out of order flip IRQ crashes at 120
-        (docs/notes/crash-reports-20261110.md). A hand-set other value stays; 120 or Unlocked picked again later stays
-        too. Refused while the game runs or a match is set up: the next look does it."""
-        if FPS_MOVE + key in self.defaults_done:
+    def _dmem_move(self, user, key):
+        """Once per data folder (2026-11-13, docs/notes/perf-ram.md): Additional DMem 3500, the first default of 0.90.2
+        to 0.91.1, becomes 0 when the resolution is not 1440p. NHL 19 maps all the direct memory there is, so 3500 MB it
+        does not need cost that much RAM commit. Another value stays (set by hand); 1440p keeps 3500 (its patch needs
+        it), and a later switch to 1080p puts the value from before 1440p back as always. Refused while the game runs
+        or a match is set up: the next look does it."""
+        if DMEM_MOVE + key in self.defaults_done:
             return
-        try:
-            moved = emusettings.frame_rate(user) in (120, 9999)
-            if moved:
-                emusettings.save(user, {emusettings.FPS_ID: 60}, self.resolution)
-        except emusettings.SettingsError as err:
-            self.ctl.host.log(f'Frame rate not moved to 60 fps now: {err}')
-            return
+        moved = False
+        if self.resolution != 1440:
+            try:
+                moved = emusettings.dmem(user) == gamesetup.DMEM_1440
+                if moved:
+                    emusettings.save(user, {'General.' + gamesetup.DMEM_KEY: 0}, self.resolution)
+            except emusettings.SettingsError as err:
+                self.ctl.host.log(f'Additional DMem not moved to 0 now: {err}')
+                return
         with self.ctl.lock:
-            self.defaults_done.append(FPS_MOVE + key)
+            self.defaults_done.append(DMEM_MOVE + key)
             self._remember()
         if moved:
-            self.ctl.host.log(f'Frame rate is now 60 fps, once ({user}). Setup, Boost changes it.')
+            self.ctl.host.log(f'Additional DMem is now 0 MB at {self.resolution}p, once ({user}): saves 3.5 GB of RAM commit.')
+
+    def _fps_move(self, user, key):
+        """Once per data folder (owner 2026-11-13: "make the app default into ... unlocked frame rate"): Frame rate 60
+        (0.91.1's default) or 120 (0.91.0's, and 0.92.0's first build) becomes Unlocked. At 60 / 120 a frame that
+        misses a tick waits a whole one (docs/notes/native-port.md); both builds carry Kravickas's fix of the Out of
+        order flip IRQ race that 0.91.0 left Unlocked for. A hand-set other value stays; 60 or 120 picked again
+        later stays too. Refused while the game runs or a match is set up: the next look does it."""
+        if UNLOCK_MOVE + key in self.defaults_done:
+            return
+        try:
+            moved = emusettings.frame_rate(user) in (60, 120)
+            if moved:
+                emusettings.save(user, {emusettings.FPS_ID: 9999}, self.resolution)
+        except emusettings.SettingsError as err:
+            self.ctl.host.log(f'Frame rate not moved to Unlocked now: {err}')
+            return
+        with self.ctl.lock:
+            self.defaults_done.append(UNLOCK_MOVE + key)
+            self._remember()
+        if moved:
+            self.ctl.host.log(f'Frame rate is now Unlocked, once ({user}). Setup, Boost changes it.')
+
+    def _logsync_move(self, user, key):
+        """Once per data folder (owner 2026-11-13): Log "Write at once" (shadPS4's default, on) goes off: synchronous
+        logging causes most of the long hitches (docs/notes/smooth-motion.md). Turned on again later it stays.
+        Refused while the game runs or a match is set up: the next look does it."""
+        if LOGSYNC_MOVE + key in self.defaults_done:
+            return
+        try:
+            moved = emusettings.log_sync(user) is not False
+            if moved:
+                emusettings.save(user, {emusettings.LOG_SYNC_ID: False}, self.resolution)
+        except emusettings.SettingsError as err:
+            self.ctl.host.log(f'Log "Write at once" not turned off now: {err}')
+            return
+        with self.ctl.lock:
+            self.defaults_done.append(LOGSYNC_MOVE + key)
+            self._remember()
+        if moved:
+            self.ctl.host.log(f'Log "Write at once" is now off, once ({user}): fewer hitches. Game settings, Log turns it on.')
 
     def _first_assets(self, found):
         """A new install's first look that finds NHL 19 and the published packs (0.90.2, owner 2026-11-11): the team
@@ -575,7 +630,7 @@ class SetupController(Part):
 
     def setup_install_pkg(self, path):
         """Find game picked a .pkg: install it (pkginstall.install, a job; the base beside the PKG, the update beside
-        the game), the game folder follows, and with no shadPS4 on this PC the Kravickas build is set up in the same
+        the game), the game folder follows, and with no shadPS4 on this PC the chosen build is set up in the same
         job."""
         if self._wait():
             return None
@@ -1214,18 +1269,22 @@ class SetupController(Part):
             return f'{title} is deleted. Patch the game again to take it out.', 'good'
         return self._job(f'Deleting {title}...', work, said, expected=(packdownload.PackError,), rescan=False)
 
-    # --- Boost performance: the shadPS4 build Play starts, Nightly or Kravickas (boost.py, owner 2026-11-11) --------
-    def setup_boost_source(self):
-        webbrowser.open(boost.BUILDS[self.build]['source'])
+    # --- Boost performance: the shadPS4 build Play starts, Overtime Native or Kravickas (boost.py) ------------------
+    def setup_boost_source(self, build=None):
+        """A build's source code (GPL-2.0): Kravickas's button on the card, Overtime Native's link in the card's Info
+        (0.92.0); none = the chosen one."""
+        webbrowser.open(boost.BUILDS[boost.name_of(build or self.build)]['source'])
         return {'ok': True}
 
     def setup_boost(self, on=True):
-        """The pre-0.90.2 name (Boost on/off), kept for old pages: on = Kravickas (what Boost was), off = Nightly."""
+        """The pre-0.90.2 name (Boost on/off), kept for old pages: on = Kravickas (what Boost was), off = the other
+        build (Overtime Native)."""
         return self.setup_build(boost.KRAVICKAS if on else boost.NIGHTLY)
 
     def setup_build(self, name):
-        """Nightly / Kravickas on the Boost performance card: remembered (it stays until another click), and when that
-        build is here and shadPS4 is closed, the app plays with it from now on. Play downloads it when it is not."""
+        """Overtime Native / Kravickas on the Boost performance card: remembered (it stays until another click), and
+        when that build is here and shadPS4 is closed, the app plays with it from now on. Play downloads it when it is
+        not."""
         if name not in boost.BUILDS:
             return {'error': f'no build {name}'}
         c = self.ctl
@@ -1243,11 +1302,14 @@ class SetupController(Part):
         return {'ok': True}
 
     def setup_build_update(self):
-        """Update on the Boost performance card: the published chosen build, now (a job)."""
+        """Update on the Boost performance card: the published Kravickas build, now (a job). Only for boost.UPDATABLE
+        (owner 2026-11-13): Overtime Native comes with Overtime's releases, and Play gets a new one by itself."""
         c = self.ctl
         if self._wait():
             return None
         no = boost.refused(None)
+        if self.build not in boost.UPDATABLE:
+            no = f'{self._build_label()} comes with Overtime releases: Play NHL 19 gets a new one by itself.'
         if no:
             c.say(no, 'caution')
             return {'error': no}
@@ -1281,14 +1343,15 @@ class SetupController(Part):
         self._use_build(build, exe)
 
     def online_boost(self, note=None):
-        """Before an online Ready in a lobby without a match plan (multiplayer_ctl): NHL 19 on the published Kravickas
-        build (the lobby build), switched on or brought up to date with no click (owner 2026-11-08: "we just handle all
-        things for him"). Lockstep play needs the same shadPS4 on both PCs. The build chosen on the card stays chosen:
-        the next Play starts it again. Waits for the download. Returns what it did: 'on', 'already', or why not
-        ('none published', a refusal); the lobby compares what is there either way."""
+        """Before an online Ready in a lobby without a match plan (multiplayer_ctl): NHL 19 on the published lobby
+        build (boost.DEFAULT, Overtime Native from 0.92.0; Kravickas before), switched on or brought up to date with no
+        click (owner 2026-11-08: "we just handle all things for him"). Lockstep play needs the same shadPS4 on both
+        PCs. The build chosen on the card stays chosen: the next Play starts it again. Waits for the download. Returns
+        what it did: 'on', 'already', or why not ('none published', a refusal); the lobby compares what is there either
+        way."""
         c = self.ctl
-        k = boost.KRAVICKAS
-        pub = (self.boost_table or {}).get(boost.PACK)
+        k = boost.DEFAULT
+        pub = (self.boost_table or {}).get(boost.LOBBY_PACK)
         current = self.known_emulator()
         on = boost.build_of(current) == k
         if on and (pub is None or pub.digest == self.boost['sha'].get(k)):
@@ -1303,7 +1366,7 @@ class SetupController(Part):
                 c.busy = 'Getting the NHL 19 build of shadPS4 for online play...'
                 self.boost_getting = self._build_label(k)
         if no:
-            c.host.log(f'Online: the Kravickas build not switched on ({no})')
+            c.host.log(f'Online: the {self._build_label(k)} build not switched on ({no})')
             return no
 
         def progress(_name, done, total):
@@ -1317,7 +1380,7 @@ class SetupController(Part):
             self._boost_applied(k, boost.install(k, patch_cache(), progress))
             return 'on'
         except (boost.BoostError, OSError, ValueError) as err:
-            c.host.log(f'Online: the Kravickas build did not download ({err})')
+            c.host.log(f'Online: the {self._build_label(k)} build did not download ({err})')
             return str(err) or 'download failed'
         finally:
             with c.lock:
@@ -1333,6 +1396,7 @@ class SetupController(Part):
             pub = table.get(info['pack'])
             here = bool(boost.here(b))
             builds.append({'id': b, 'label': info['label'], 'here': here, 'published': pub is not None,
+                           'updatable': b in boost.UPDATABLE,
                            'newer': here and pub is not None and pub.digest != self.boost['sha'].get(b),
                            'size': _megabytes(pub.size) if pub else ''})
         cur = next(x for x in builds if x['id'] == self.build)
@@ -1343,8 +1407,10 @@ class SetupController(Part):
             text, tone = f'Downloading the {self.boost_getting or label} build... {round(part * 100)} %', 'info'
         elif why:
             text, tone = why, 'caution'
-        elif cur['newer']:
+        elif cur['newer'] and cur['updatable']:
             text, tone = f'{label}: a newer build is out. Press Update, or Play NHL 19 gets it.', 'info'
+        elif cur['newer']:
+            text, tone = f'{label}: a newer build is out. Play NHL 19 gets it.', 'info'
         elif cur['here']:
             text, tone = f'{label}: ready. Play NHL 19 starts it.', 'good'
         elif cur['published']:
@@ -1359,7 +1425,8 @@ class SetupController(Part):
         news, upstream = self._emulator_news() if self.build == boost.KRAVICKAS else ('', '')
         return {'build': self.build, 'builds': builds, 'playing': boost.build_of(emulator) or '',
                 'text': text, 'tone': tone, 'progress': part, 'can': not c.busy,
-                'can_update': cur['published'] and not c.busy and part is None,
+                'updatable': cur['updatable'],
+                'can_update': cur['updatable'] and cur['published'] and not c.busy and part is None,
                 'resolution': self.resolution, 'framerate': self._frame_rate(emulator), 'everywhere': self.replays60,
                 'news': '' if part is not None else news, 'upstream': upstream}
 
@@ -1539,10 +1606,10 @@ class SetupController(Part):
         return {'ok': True}
 
     def setup_everywhere(self, on):
-        """Apply everywhere, right of Frame rate (owner 2026-11-13, 0.91.1): off by default, the patch file keeps
-        Kravickas's 60 FPS replays block disabled and replays, celebrations, cutscenes and menus keep the game's own pace;
-        on (experimental: the Out of order flip IRQ crash, docs/notes/crash-reports-20261110.md, had the block on every
-        time) they follow the frame rate too. Each player's own (xmlpatch.LOCAL_ONLY_TITLES). Like Resolution: a patched game
+        """Apply everywhere, right of Frame rate (owner 2026-11-13, 0.91.1; on by default from 0.92.0, when both builds got
+        Kravickas's fix of the Out of order flip IRQ race): on, Kravickas's 60 FPS replays block is enabled and replays,
+        celebrations, cutscenes and menus follow the frame rate; off, the patch file keeps it disabled and they keep the
+        game's own pace. Each player's own (xmlpatch.LOCAL_ONLY_TITLES). Like Resolution: a patched game
         takes it now, or at its next Play while shadPS4 runs; no Patch."""
         on = bool(on)
         with self.ctl.lock:
@@ -1564,8 +1631,7 @@ class SetupController(Part):
         else:
             then = 'Patch the game again to use it.'
         if on:
-            self.ctl.say('Apply everywhere on (experimental, NHL 19 might crash with "Out of order flip IRQ"): replays, '
-                         f'cutscenes and menus follow the frame rate. {then}', 'caution')
+            self.ctl.say(f'Apply everywhere on: replays, cutscenes and menus follow the frame rate. {then}', 'good')
         else:
             self.ctl.say(f"Apply everywhere off: replays, cutscenes and menus keep the game's own pace. {then}", 'good')
         self.ctl.changed('setup')

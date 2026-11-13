@@ -1,8 +1,14 @@
 """The shadPS4 builds the app plays with (Setup's Boost performance card, the header's Play NHL 19 button). Two builds,
-each a pack on the release host pinned by its sha256 in latest.json, never in the exe (owner 2026-11-11, 0.90.2):
-- 'nightly' (the default): upstream shadPS4's official nightly zip as is (packdownload.NIGHTLY_PACK);
-- 'kravickas': our smooth build on Kravickas's NHL 19 branch, with Kravickas's yes (owner, 2026-11-01)
-  (packdownload.EMULATOR_PACK, also the lobby build of onlineemu.py).
+each a pack on the release host pinned by its sha256 in latest.json, never in the exe (owner 2026-11-11, 0.90.2;
+order, default and packs from 0.92.0, owner 2026-11-13):
+- 'nightly', shown as "Overtime Native" (the default, first on the card, the lobby build of onlineemu.py): Overtime's
+  build of upstream nightly 4788f0b + lazy RAM commit, the input poll thread, Kravickas's flip fix and the texture
+  collector by seconds (fork branch overtime-nightly, docs/notes/perf-ram.md, native-port.md)
+  (packdownload.NIGHTLY_PACK). Overtime publishes it with its releases; the id, folder and pack name keep "nightly"
+  (prefs, installed folders and the server's pin URL name them);
+- 'kravickas': Kravickas's own CI build of his nhl-test branch (d334436: his fix of the Out of order flip IRQ race on
+  upstream main), with Kravickas's yes (owner, 2026-11-01) (packdownload.EMULATOR_PACK). The card's Update is for
+  this one: its builds move on GitHub between Overtime's releases.
 Each one's shadPS4.exe goes into the app's own folder (a player's own exe is never touched); every shadPS4 there uses
 %APPDATA%\\shadPS4, so saves, patch and ShadNet login stay what they are. QtLauncher is not changed (0.90.2; the
 "NHL 19 Boost" entry older apps added stays). Standard library only.
@@ -16,13 +22,15 @@ from . import gamesetup, packdownload, paths
 
 NIGHTLY, KRAVICKAS = 'nightly', 'kravickas'
 DEFAULT = NIGHTLY
-BUILDS = {      # GPL-2.0: each build's source code
-    NIGHTLY: {'pack': packdownload.NIGHTLY_PACK, 'label': 'Nightly', 'folder': ('boost', 'nightly'),
-              'source': 'https://github.com/shadps4-emu/shadPS4/releases'},
+BUILDS = {      # GPL-2.0: each build's source code; the card shows them in this order
+    NIGHTLY: {'pack': packdownload.NIGHTLY_PACK, 'label': 'Overtime Native', 'folder': ('boost', 'nightly'),
+              'source': 'https://github.com/MatusRiedl/shadPS4/tree/overtime-nightly'},
     KRAVICKAS: {'pack': packdownload.EMULATOR_PACK, 'label': 'Kravickas', 'folder': ('boost',),
-                'source': 'https://github.com/MatusRiedl/shadPS4/tree/overtime-ship-1'},
+                'source': 'https://github.com/Kravickas/shadPS4/tree/d3344364003349c2bb35f0c0eb2389a64db4c792'},
 }
-PACK = packdownload.EMULATOR_PACK       # the Kravickas pack (onlineemu, online_boost)
+UPDATABLE = (KRAVICKAS,)        # the card's Update button: Overtime Native comes with Overtime's releases (Play gets it)
+PACK = packdownload.EMULATOR_PACK       # the Kravickas pack
+LOBBY_PACK = BUILDS[DEFAULT]['pack']    # the lobby build when the server names none (onlineemu), online_boost's
 SOURCE = BUILDS[KRAVICKAS]['source']
 ENTRY = 'NHL 19 Boost'      # its name in QtLauncher's Version Manager (apps before 0.90.2)
 

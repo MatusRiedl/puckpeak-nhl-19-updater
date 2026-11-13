@@ -92,7 +92,8 @@ FIELDS = [
        options=_opts(('Mailbox', 'Mailbox (V-Sync)'), ('Fifo', 'FIFO (V-Sync)'), ('Immediate', 'Immediate (no V-Sync)'))),
     _f('Graphics', 'Video', 'GPU', 'vblank_frequency', 'Frame rate', 'select', 60,
        "The game paces everything by this (shadPS4's vblank: 60, 120 or 9999 Hz); with Setup's Apply everywhere on, "
-       "replays, cutscenes and menus follow it too. 60 is the console's and the default. Online matches use yours "
+       "replays, cutscenes and menus follow it too. 60 is the console's; Unlocked is the default (a frame shows as soon "
+       "as it is done; with 60 or 120 a late frame waits for the next tick). Online matches use yours "
        '(players on different frame rates play together fine).',
        options=_opts((60, '60 fps'), (120, '120 fps'), (9999, 'Unlocked'))),
     _f('Graphics', 'Video', 'GPU', 'window_width', 'Window width', 'number', 1280,
@@ -151,7 +152,8 @@ FIELDS = [
        'log settings and put yours back after.'),
     _f('Log', 'Log', 'Log', 'separate', 'One log per game', 'check', False, 'A log file for each game.'),
     _f('Log', 'Log', 'Log', 'sync', 'Write at once', 'check', True,
-       'Writes each line right away, so a crash keeps the last lines. A little slower.'),
+       'Writes each line right away, so a crash keeps the last lines. Off by default: it causes stutter. Turn it '
+       'on before you reproduce a crash for a report.'),
     _f('Log', 'Log', 'Log', 'append', 'Add to the last log', 'check', False,
        'Keeps the last log and adds to it, instead of starting a new one.'),
     _f('Log', 'Log', 'Log', 'skip_duplicate', 'Skip repeated lines', 'check', True,
@@ -316,6 +318,19 @@ def frame_rate(user_dir):
     return f['default']
 
 
+LOG_SYNC_ID = 'Log.sync'    # Log tab's "Write at once"
+
+
+def log_sync(user_dir):
+    """Whether NHL 19 starts with synchronous logging: the game file's, else config.json's, else shadPS4's on."""
+    f = BY_ID[LOG_SYNC_ID]
+    for path in (gamesetup.custom_config_path(user_dir), os.path.join(user_dir, 'config.json')):
+        value = _value_in(_load(path), f)
+        if value is not None:
+            return value
+    return f['default']
+
+
 def view(user_dir, resolution=1080):
     """What the Game settings view shows: the tabs, every field with its value (game file, else config.json, else the
     emulator's default) and whether the game file sets it, the locks, and whether a save would be refused now."""
@@ -408,18 +423,34 @@ def _backup(path):
 
 # Written once per data folder after a game is found, without Patch (owner 2026-11-11, 0.90.2: "this should be default
 # for anyone after they locate a game ... people should be able to change it"); not locked, the player may change them
-# later. Vblank 60 (owner 2026-11-13, 0.91.1: the Frame rate choice starts at 60 fps; 120 in 0.91.0, 9999 before); Additional DMem
-# only goes up (a bigger value stays).
+# later. Vblank 9999, Unlocked (owner 2026-11-13: "make the app default into ... unlocked frame rate": at 120 a late
+# frame waits a whole 8.3 ms tick, docs/notes/native-port.md; 120 earlier that day, 60 in 0.91.1, 120 in 0.91.0, 9999
+# before, left then for the Out of order flip IRQ crash). Log "Write at once" off (same day: synchronous logging
+# causes most of the long hitches, docs/notes/smooth-motion.md; the Log tab turns it back on for a crash report).
+# Additional DMem is not one of them any more (2026-11-13, docs/notes/perf-ram.md): NHL 19 sizes its heaps to all the
+# direct memory there is (it maps about 8.1 GB with 3500 extra), so 3500 for everyone cost 3.5 GB of RAM commit at
+# 1080p; only the 1440p patch needs it, and Setup's Resolution sets it with that patch (gamesetup.DMEM_1440).
 # The locked GPU keys (gamesetup.GPU_SETTINGS) are written at every look.
 FIRST_DEFAULTS = {('General', 'neo_mode'): True, ('Vulkan', 'pipeline_cache_enabled'): True,
-                  ('GPU', 'direct_memory_access_enabled'): True, ('GPU', 'vblank_frequency'): 60,
-                  ('General', gamesetup.DMEM_KEY): gamesetup.DMEM_1440}
+                  ('GPU', 'direct_memory_access_enabled'): True, ('GPU', 'vblank_frequency'): 9999,
+                  ('Log', 'sync'): False}
 AT_LEAST = {('General', gamesetup.DMEM_KEY)}
+
+
+def dmem(user_dir):
+    """The game's Additional DMem (MB) in its own config file, 0 when missing; None when the file does not read."""
+    try:
+        cfg = gamesetup._game_config(gamesetup.custom_config_path(user_dir), user_dir)
+    except gamesetup.SetupError:
+        return None
+    v = (cfg.get('General') or {}).get(gamesetup.DMEM_KEY, 0)
+    return v if isinstance(v, int) and not isinstance(v, bool) else 0
 
 
 def apply_defaults(user_dir, first):
     """Readbacks Precise and readback linear images on (always), and with `first` the FIRST_DEFAULTS (PS4 Pro mode,
-    Shader cache, Direct memory access, Frame rate 60, Additional DMem 3500 MB or more), in the game's own config file, without Patch. A new file starts from config.json; the file before is backed up.
+    Shader cache, Direct memory access, Frame rate Unlocked, Log Write at once off), in the game's own config file,
+    without Patch. A new file starts from config.json; the file before is backed up.
     Returns the keys written ([] when all were set already). SettingsError while the game runs, a match is set up or
     the file does not read."""
     if not gamesetup.is_data_dir(user_dir):

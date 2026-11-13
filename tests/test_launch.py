@@ -258,6 +258,8 @@ def test_start_runs_the_online_copy_from_the_players_own_start_folder(world, mon
     assert cmd[0] == str(copy) and cmd[1:3] == ['-g', str(world['game'] / 'eboot.bin')]
     assert cmd[3] == '-p' and cmd[4].endswith('match.xml')
     assert kw['cwd'] == gamesetup.start_dir(str(world['emu']))   # the player's data, not the copy's folder
+    if sys.platform == 'win32':                                  # owner 2026-11-13: above normal priority, every build
+        assert kw['creationflags'] & launch.ABOVE_NORMAL == 0x8000
     portable = world['tmp'] / 'portable'
     (portable / 'user').mkdir(parents=True)
     own = portable / 'shadPS4.exe'
@@ -278,3 +280,29 @@ def test_start_with_the_copy_still_refuses_while_shadps4_runs(world):   # noqa: 
     with pytest.raises(launch.LaunchError, match='not found'):
         launch.start(str(world['emu']), str(world['game']), running=lambda: False, popen=None,
                      exe=str(world['tmp'] / 'missing' / 'shadPS4.exe'))
+
+
+class FakeKernel32:
+    def __init__(self, handle=77, ok=1):
+        self.handle, self.ok, self.calls = handle, ok, []
+
+    def OpenProcess(self, access, inherit, pid):
+        self.calls.append(('open', access, pid))
+        return self.handle
+
+    def SetProcessInformation(self, handle, kind, state, size):
+        self.calls.append(('set', handle, kind, size))
+        return self.ok
+
+    def CloseHandle(self, handle):
+        self.calls.append(('close', handle))
+
+
+def test_full_speed_turns_power_throttling_off_and_never_raises():
+    k = FakeKernel32()
+    assert launch.full_speed(1234, k) is True
+    assert k.calls == [('open', 0x0200, 1234), ('set', 77, 4, 12), ('close', 77)]   # ProcessPowerThrottling, 3 ULONGs
+    assert launch.full_speed(1234, FakeKernel32(handle=0)) is False                 # the process is gone already
+    refused = FakeKernel32(ok=0)
+    assert launch.full_speed(1234, refused) is False and refused.calls[-1] == ('close', 77)
+    assert launch.full_speed(1234, object()) is False                               # no such API: the game runs anyway

@@ -1,5 +1,5 @@
-"""The shadPS4 builds (overtime_roster.app.boost, Setup's Boost performance card, the header's Play NHL 19): Nightly and
-Kravickas from a local release fixture into the app's own folder; QtLauncher's files (apps before 0.90.2)."""
+"""The shadPS4 builds (overtime_roster.app.boost, Setup's Boost performance card, the header's Play NHL 19): Kravickas and
+Nightly from a local release fixture into the app's own folder; QtLauncher's files (apps before 0.90.2)."""
 import hashlib
 import json
 import os
@@ -150,12 +150,17 @@ def test_the_nightly_pack_is_checked_as_a_program_pack():
     assert boost.build_of(boost.exe_path('nightly')) == 'nightly' and boost.build_of(OWN) is None
 
 
-def test_play_gets_nightly_by_default_and_keeps_the_players_own(sc, served, world, started):  # noqa: F811
+def test_play_gets_overtime_native_by_default_and_keeps_the_players_own(sc, served, world, started):  # noqa: F811
+    # owner 2026-11-13 (0.92.0 final): Overtime Native (id 'nightly') first and the default, Kravickas second; the
+    # card's Update is for Kravickas only
     own = str(world['emu'])
     sc.setup_set_emulator(own)
     card = card_of(sc)
+    assert boost.DEFAULT == 'nightly' and boost.BUILDS['nightly']['label'] == 'Overtime Native'
     assert card['build'] == 'nightly' and [b['id'] for b in card['builds']] == ['nightly', 'kravickas']
-    assert card['can_update'] and 'downloads it first' in card['text']
+    assert [b['label'] for b in card['builds']] == ['Overtime Native', 'Kravickas']
+    assert [b['updatable'] for b in card['builds']] == [False, True]
+    assert not card['can_update'] and not card['updatable'] and 'downloads it first' in card['text']
     assert sc.play_state()['can']
     sc.setup_play()
     exe = boost.exe_path('nightly')
@@ -166,39 +171,95 @@ def test_play_gets_nightly_by_default_and_keeps_the_players_own(sc, served, worl
     assert started == [exe, exe]
 
 
-def test_kravickas_stays_chosen_and_switches_when_here(sc, served, world, started):  # noqa: F811
+def test_a_build_click_stays_chosen_without_a_warning_and_switches_when_here(sc, served, world, started):  # noqa: F811
     sc.setup_set_emulator(str(world['emu']))
     sc.setup_build('kravickas')
     assert sc.build == 'kravickas' and sc.ctl.prefs['setup']['build'] == 'kravickas'
+    assert sc.ctl.said[-1] == ('Kravickas chosen: Play NHL 19 gets it first.', 'good')
     assert sc.emulator == str(world['emu'])                         # not here yet: Play gets it
     sc.setup_play()
     k = boost.exe_path('kravickas')
     assert pathlib.Path(k).read_bytes() == BUILD and started == [k]
     sc.setup_build('nightly')                                       # not here: the next Play downloads it
-    assert sc.emulator == k
+    text, tone = sc.ctl.said[-1]                                    # no experimental warning any more (owner 2026-11-13)
+    assert tone == 'good' and text == 'Overtime Native chosen: Play NHL 19 gets it first.' and sc.emulator == k
     sc.setup_play()
     sc.setup_build('kravickas')                                     # both here now: the click switches at once
     assert sc.emulator == k and card_of(sc)['build'] == 'kravickas'
     assert SC.SetupController(sc.ctl).build == 'kravickas'          # the next start of the app remembers it
+    sc.setup_build('nightly')
+    assert sc.ctl.said[-1] == ('NHL 19 plays on the Overtime Native build of shadPS4.', 'good')
+
+
+def test_apps_before_0920_move_to_overtime_native_and_apply_everywhere_once(sc):  # noqa: F811
+    sc.ctl.prefs['setup'] = {'build': 'kravickas', 'replays60': False}   # a 0.91.1 player: Kravickas, the switch off
+    again = SC.SetupController(sc.ctl)
+    assert again.build == 'nightly' and again.replays60
+    again._remember()
+    assert sc.ctl.prefs['setup']['rebuild'] == SC.REBUILD
+    again.setup_build('kravickas')
+    again.setup_everywhere(False)
+    later = SC.SetupController(sc.ctl)                              # chosen after 0.92.0: kept
+    assert later.build == 'kravickas' and not later.replays60
+
+
+def test_the_card_shows_only_the_kravickas_source_button_and_no_experimental_text():
+    page = (pathlib.Path(SC.__file__).parents[1] / 'web' / 'js' / 'tabs' / 'setup.js').read_text(encoding='utf-8')
+    assert 'experimental' not in page.lower() and 'su-exp' not in page and 'Nightly' not in page
+    assert '.filter((x) => x.updatable)' in page                    # source buttons: the Kravickas one
+    assert 'github.com/MatusRiedl/shadPS4, branch overtime-nightly' in page     # GPL-2.0: Native's source, in the Info
+
+
+def test_each_build_has_its_own_source_code(sc, monkeypatch):  # noqa: F811
+    opened = []
+    monkeypatch.setattr(SC.webbrowser, 'open', opened.append)
+    sc.setup_boost_source('kravickas')
+    sc.setup_boost_source('nightly')
+    assert opened == [boost.BUILDS['kravickas']['source'], boost.BUILDS['nightly']['source']]
+    assert 'Kravickas/shadPS4' in opened[0] and 'overtime-nightly' in opened[1]
 
 
 def test_a_newer_build_is_offered_and_play_gets_it(sc, served, world, started):  # noqa: F811
     sc.setup_set_emulator(str(world['emu']))
+    sc.setup_build('kravickas')
     sc.setup_play()
-    release(served, nightly=b'MZ newer')
+    release(served, b'MZ newer')
     packdownload.forget()
     sc._scan()
-    assert next(b for b in card_of(sc)['builds'] if b['id'] == 'nightly')['newer']
+    card = card_of(sc)
+    assert next(b for b in card['builds'] if b['id'] == 'kravickas')['newer']
+    assert card['can_update'] and 'Press Update' in card['text']
     sc.setup_play()
-    assert pathlib.Path(boost.exe_path('nightly')).read_bytes() == b'MZ newer'
+    assert pathlib.Path(boost.exe_path('kravickas')).read_bytes() == b'MZ newer'
     assert not any(b['newer'] for b in card_of(sc)['builds'])
 
 
-def test_update_gets_the_chosen_build_now(sc, served, world):  # noqa: F811
+def test_play_gets_a_newly_published_overtime_native_without_the_update_button(sc, served, world, started):  # noqa: F811
+    # Overtime publishes it with its releases: no Update for it, but Play still moves everyone to the one exe the
+    # lobby pin and the matchmaking tag need
     sc.setup_set_emulator(str(world['emu']))
+    sc.setup_play()
+    release(served, nightly=b'MZ native 2')
+    packdownload.forget()
+    sc._scan()
+    card = card_of(sc)
+    assert next(b for b in card['builds'] if b['id'] == 'nightly')['newer'] and not card['can_update']
+    assert card['text'] == 'Overtime Native: a newer build is out. Play NHL 19 gets it.'
+    sc.setup_play()
+    assert pathlib.Path(boost.exe_path('nightly')).read_bytes() == b'MZ native 2'
+    assert not any(b['newer'] for b in card_of(sc)['builds'])
+
+
+def test_update_is_for_the_kravickas_build_only(sc, served, world):  # noqa: F811
+    sc.setup_set_emulator(str(world['emu']))
+    got = sc.setup_build_update()                                   # Overtime Native chosen (the default): refused
+    assert 'comes with Overtime releases' in got['error'] and sc.ctl.said[-1][1] == 'caution'
+    assert not os.path.exists(boost.exe_path('nightly')) and not os.path.exists(boost.exe_path('kravickas'))
+    sc.setup_build('kravickas')
+    assert card_of(sc)['can_update'] and card_of(sc)['updatable']
     sc.setup_build_update()
-    assert pathlib.Path(boost.exe_path('nightly')).read_bytes() == NIGHTLY
-    assert sc.ctl.said[-1] == ('The Nightly build of shadPS4 is up to date.', 'good')
+    assert pathlib.Path(boost.exe_path('kravickas')).read_bytes() == BUILD
+    assert sc.ctl.said[-1] == ('The Kravickas build of shadPS4 is up to date.', 'good')
 
 
 def test_offline_play_starts_the_build_here(sc, served, world, started):  # noqa: F811
@@ -215,10 +276,11 @@ def test_offline_play_starts_the_build_here(sc, served, world, started):  # noqa
 
 def test_nothing_starts_while_shadps4_runs(sc, served, world, started, monkeypatch):  # noqa: F811
     sc.setup_set_emulator(str(world['emu']))
+    sc.setup_build('kravickas')
     monkeypatch.setattr(overlay, 'emulator_running', lambda: True)
     assert 'already running' in sc.setup_play()['error'] and started == []
     assert 'Close shadPS4' in sc.setup_build_update()['error']
-    assert not os.path.exists(boost.exe_path('nightly'))
+    assert not os.path.exists(boost.exe_path('kravickas'))
 
 
 def test_a_portable_shadps4_keeps_playing_itself(sc, world, started):  # noqa: F811
@@ -263,26 +325,29 @@ def test_a_build_not_published_says_so(sc, served, world, started):  # noqa: F81
     release(served, nightly=None)
     packdownload.forget()
     sc.setup_set_emulator(str(world['emu']))
-    card = card_of(sc)
+    card = card_of(sc)                                              # Overtime Native, the default, is not served
     assert not card['can_update'] and 'not available' in card['text']
     sc.setup_play()
     assert sc.emulator == str(world['emu']) and sc.ctl.said[-1][1] == 'bad' and started == []
 
 
-def test_an_online_ready_switches_to_the_kravickas_build_with_no_click_and_keeps_it_current(sc, served, world):  # noqa: F811
-    # owner 2026-11-08: "make it automated to boost performance for the online"; sonku's other build desynced
+def test_an_online_ready_switches_to_the_lobby_build_with_no_click_and_keeps_it_current(sc, served, world):  # noqa: F811
+    # owner 2026-11-08: "make it automated to boost performance for the online"; sonku's other build desynced.
+    # owner 2026-11-13: the lobby build is Overtime Native, also for a player who chose Kravickas (the choice stays)
     own = str(world['emu'])
     sc.setup_set_emulator(own)
+    sc.setup_build('kravickas')
     notes = []
     assert sc.online_boost(notes.append) == 'on'
-    k = boost.exe_path('kravickas')
-    assert sc.emulator == k and sc.boost['emulator'] == own and sc.ctl.busy is None and sc.build == 'nightly'
+    n = boost.exe_path('nightly')
+    assert sc.emulator == n and sc.boost['emulator'] == own and sc.ctl.busy is None and sc.build == 'kravickas'
+    assert pathlib.Path(n).read_bytes() == NIGHTLY and not os.path.exists(boost.exe_path('kravickas'))
     assert notes and notes[-1].endswith('100 %')
     assert sc.online_boost() == 'already'
-    release(served, b'MZ newer')
+    release(served, nightly=b'MZ newer')
     packdownload.forget()
     sc._scan()
-    assert sc.online_boost() == 'on' and pathlib.Path(k).read_bytes() == b'MZ newer'
+    assert sc.online_boost() == 'on' and pathlib.Path(n).read_bytes() == b'MZ newer'
 
 
 def test_an_online_ready_leaves_the_build_alone_while_shadps4_runs_or_nothing_is_published(sc, served, world,  # noqa: F811

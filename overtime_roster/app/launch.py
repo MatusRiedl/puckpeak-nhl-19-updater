@@ -56,13 +56,49 @@ def start(emu_exe, game_dir, patch_file=None, running=None, popen=subprocess.Pop
         raise LaunchError(str(err)) from err
     flags = 0
     if sys.platform == 'win32':
-        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        # above normal from its first instruction (owner 2026-11-13, docs/notes/native-port.md: the native port's own
+        # process setup; steadier frame times with other programs running, timing-neutral, every build)
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | ABOVE_NORMAL
     proc = popen(command(run, game_dir, patch_file), cwd=cwd,
                  creationflags=flags, close_fds=True, env=selfupdate.clean_environment())
     if popen is subprocess.Popen and sys.platform == 'win32':
+        full_speed(proc.pid)
         from . import gameicon      # NHL 19's icon on the emulator's window, not shadPS4's (owner 2026-11-12)
         gameicon.watch(proc, game_dir)
     return proc
+
+
+ABOVE_NORMAL = 0x8000       # ABOVE_NORMAL_PRIORITY_CLASS
+
+
+def full_speed(pid, kernel32=None):
+    """Windows' execution-speed power throttling off for the emulator (the other half of the native port's process
+    setup: Windows may otherwise run a window that is not in front on the slow cores or at a lower clock). True when
+    it was set; never raises: the game runs without it too."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        k32 = kernel32 if kernel32 is not None else ctypes.WinDLL('kernel32', use_last_error=True)
+        if kernel32 is None:
+            k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+            k32.OpenProcess.restype = wintypes.HANDLE
+            k32.SetProcessInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+            k32.SetProcessInformation.restype = wintypes.BOOL
+            k32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        class PowerThrottling(ctypes.Structure):
+            _fields_ = [('Version', wintypes.ULONG), ('ControlMask', wintypes.ULONG), ('StateMask', wintypes.ULONG)]
+
+        handle = k32.OpenProcess(0x0200, False, pid)        # PROCESS_SET_INFORMATION
+        if not handle:
+            return False
+        try:
+            state = PowerThrottling(1, 0x1, 0)      # PROCESS_POWER_THROTTLING_EXECUTION_SPEED: controlled, off
+            return bool(k32.SetProcessInformation(handle, 4, ctypes.byref(state), ctypes.sizeof(state)))  # ProcessPowerThrottling
+        finally:
+            k32.CloseHandle(handle)
+    except Exception:
+        return False
 
 
 WM_CLOSE = 0x0010
