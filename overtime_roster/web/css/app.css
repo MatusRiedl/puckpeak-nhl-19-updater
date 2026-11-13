@@ -49,7 +49,7 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
 .backdrop .streak.s3 { left: 12%; top: 18%; width: 180px; opacity: .5; }
 
 /* --- header: the OVERTIME wordmark | "brought to you by" Puck Peak, then the game line ------------------------------- */
-.header { position: relative; z-index: 1; text-align: center; padding: 14px 0 4px; flex: none; }
+.header { position: relative; z-index: 2;text-align: center; padding: 14px 0 4px; flex: none; }
 .header .brand { display: inline-flex; align-items: center; gap: 22px; }
 .header .wordmark { font-family: var(--font-head); font-weight: 700; font-style: italic; font-size: 40px; line-height: 1;
   letter-spacing: .08em; text-transform: uppercase; background: var(--metal); -webkit-background-clip: text;
@@ -92,6 +92,35 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
   box-shadow: 0 6px 18px rgba(49, 199, 120, .5), inset 0 1px 0 rgba(255, 255, 255, .3); }
 .playnow.ready:active { transform: translateY(1px); }
 .compact .playnow { top: 6px; height: 32px; font-size: 13px; padding: 0 14px 0 12px; }
+/* the Puck Peak apps, top left, mirroring Play: Blueline (blue) | Overtime (greyed, this app) | Faceoff (red); a card on hover */
+.appdock { position: absolute; top: 16px; left: 20px; z-index: 3; display: flex; align-items: stretch; height: 42px; text-align: left; }
+.appdock .dk { --c: #9AA3B2; --glow: transparent; position: relative; display: flex; align-items: center; gap: 8px;
+  padding: 0 14px 0 6px; border: 0; cursor: pointer; font-family: var(--font-head); font-stretch: var(--head-stretch);
+  font-style: var(--head-style); font-weight: 700; font-size: 15px; letter-spacing: .1em; text-transform: uppercase;
+  color: #fff; white-space: nowrap; transition: filter .15s var(--ease); }
+.appdock .dk img { width: 32px; height: 32px; flex: none; }
+.appdock .dk.blue { --c: #1FA3E8; --glow: rgba(31, 163, 232, .45); border-radius: 4px 0 0 4px;
+  background: linear-gradient(180deg, #2BB0F0, #1478C2); box-shadow: 0 4px 14px var(--glow), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.appdock .dk.red { --c: #E8263A; --glow: rgba(232, 38, 58, .45); border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #F03A4C, #B5182A); box-shadow: 0 4px 14px var(--glow), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.appdock .dk.blue img, .appdock .dk.red img { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .5)); }
+.appdock .dk.here { cursor: default; color: var(--text-3); background: linear-gradient(180deg, #3a3f49, #2a2e36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 0 0 1px var(--line-hi); }
+.appdock .dk.here img { opacity: .55; filter: grayscale(1); }
+.appdock .dk.blue:hover, .appdock .dk.red:hover, .appdock .dk:focus-visible { outline: none; filter: brightness(1.12); }
+.appdock .dk:active:not(.here) { transform: translateY(1px); }
+.appdock .tip { position: absolute; top: calc(100% + 8px); left: 0; width: 290px; text-align: left; padding: 10px 12px; border-radius: 4px;
+  background: #161a21; box-shadow: inset 0 0 0 1px var(--c), 0 10px 30px rgba(0, 0, 0, .6); pointer-events: none;
+  opacity: 0; transform: translateY(-4px); transition: opacity .15s var(--ease), transform .15s var(--ease);
+  font-family: var(--font); font-style: normal; font-weight: 400; letter-spacing: 0; text-transform: none; white-space: normal; }
+.appdock .dk:hover .tip, .appdock .dk:focus-visible .tip { opacity: 1; transform: none; }
+.appdock .tip strong { display: block; font-family: var(--font-head); font-stretch: var(--head-stretch); font-weight: 700;
+  font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--c); }
+.appdock .tip span { display: block; margin-top: 5px; font-size: 12.5px; line-height: 1.45; color: var(--text-soft); }
+@media (max-width: 1250px) { .appdock .dk { padding: 0 8px; } .appdock .dk b { display: none; } }
+.compact .appdock { top: 6px; height: 32px; }
+.compact .appdock .dk { font-size: 13px; }
+.compact .appdock .dk img { width: 24px; height: 24px; }
 
 /* --- tabs: [L1] Setup · Update · Game patch | Roster · ... · Front office [R1] ------------------------------------------- */
 .tabs { position: relative; z-index: 1; display: flex; justify-content: center; align-items: center; gap: 14px;

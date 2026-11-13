@@ -29,9 +29,31 @@ function PlayButton({ play }) {
   </button>`;
 }
 
+// The Puck Peak apps, top left, mirroring Play (owner 2026-11-13, docs/ui/mockups/apps-promo.html): Blueline (NHL
+// Legacy), Overtime greyed in the middle (this app), Faceoff (NHL 27). Each opens its page; a card tells what it is.
+const APPS = [
+  { id: 'blueline', name: 'Blueline', tone: 'blue', title: 'Blueline · NHL Legacy on PC',
+    text: 'NHL Legacy Updated and Online with a few clicks. 32 teams, lobbies, edit everything.' },
+  { id: 'overtime', name: 'Overtime', tone: 'here', title: 'Overtime · NHL 19 on PC',
+    text: 'NHL 19 Updated and Online with a few clicks. 32 teams, lobbies, edit everything.' },
+  { id: 'faceoff', name: 'Faceoff', tone: 'red', title: 'Faceoff · NHL 27 on PC',
+    text: 'Play NHL 27 on PC with steady pacing and more to come.' },
+];
+
+function AppDock() {
+  return html`<div class="appdock">
+    ${APPS.map((a) => html`<button type="button" key=${a.id} class=${cls('dk', a.tone)} aria-disabled=${a.tone === 'here'}
+        onClick=${a.tone === 'here' ? null : () => call('open_app', a.id)}>
+      <img src=${`img/app-${a.id}.png`} alt="" draggable="false"/><b>${a.name}</b>
+      <span class="tip" role="tooltip"><strong>${a.title}</strong><span>${a.text}</span></span>
+    </button>`)}
+  </div>`;
+}
+
 export function Header({ meta, play }) {
   const [name, game, version] = meta.title || [meta.app_name, '', meta.version];
   return html`<header class="header">
+    <${AppDock}/>
     <${PlayButton} play=${play}/>
     <div class="brand">
       <div class="wordmark">${name}</div>

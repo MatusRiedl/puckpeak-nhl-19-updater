@@ -377,6 +377,7 @@ def test_exe_bundle_guard_flags_pictures_and_archives(tmp_path):
     spec.loader.exec_module(guard)
     (tmp_path / 'img').mkdir()
     (tmp_path / 'img' / 'logo.png').write_bytes(b'x')
+    (tmp_path / 'img' / 'app-faceoff.png').write_bytes(b'x')     # the header's app dock icons are the app's own
     (tmp_path / 'app.js').write_bytes(b'x')
     assert guard.stray([str(tmp_path)]) == []
     (tmp_path / 'looks32.zip').write_bytes(b'x')

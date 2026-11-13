@@ -2,6 +2,13 @@
 
 What changed in each version, for players.
 
+## 0.95.0 (2026-11-13)
+
+### Added
+
+- **The Puck Peak apps, top left**: Blueline (NHL Legacy on PC) and Faceoff (NHL 27 on PC) sit beside Overtime,
+  which is greyed because you are in it. Hover a button to see what each app is; a click opens its page.
+
 ## 0.94.0 (2026-11-13)
 
 ### Changed

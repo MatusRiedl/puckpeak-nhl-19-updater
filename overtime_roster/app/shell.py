@@ -10,7 +10,7 @@ import os
 import threading
 import webbrowser
 
-from .. import DISCORD, KOFI, SITE
+from .. import DISCORD, KOFI, SISTER_APPS, SITE
 from . import paths
 from .registry import Part
 
@@ -48,7 +48,7 @@ def friendly_date(stamp, now=None):
 class Shell(Part):
     SLICES = {'status': 'status', 'app': 'app', 'question': 'question'}
     CALLS = {'tab': 'tab', 'answer': 'answer', 'open_site': 'open_site', 'open_discord': 'open_discord',
-             'open_kofi': 'open_kofi', 'open_error_log': 'open_error_log',
+             'open_kofi': 'open_kofi', 'open_app': 'open_app', 'open_error_log': 'open_error_log',
              'open_path': 'open_path', 'ask_unsaved': 'ask_unsaved', 'friendly_date': 'friendly_date',
              'pick_folder': 'pick_folder'}
 
@@ -153,6 +153,13 @@ class Shell(Part):
     def open_kofi(self):
         webbrowser.open(KOFI)
         return {'ok': True}
+
+    def open_app(self, which):
+        # the header's app dock: another Puck Peak app's page (only the known ones)
+        url = SISTER_APPS.get(which)
+        if url:
+            webbrowser.open(url)
+        return {'ok': bool(url)}
 
     def open_error_log(self):
         path = os.path.join(paths.app_home(), 'logs', 'error.log')
