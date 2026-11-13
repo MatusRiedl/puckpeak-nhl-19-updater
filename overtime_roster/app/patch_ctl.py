@@ -32,7 +32,9 @@ LAYERS = (
     ('names', 'Utah and Coachella Valley names',
      'Arizona becomes the Utah Mammoth (UTA). Burnaby becomes Coachella Valley.',
      "In the game's menus, Arizona's city, name, nickname and short name become the Utah Mammoth's. Burnaby, the "
-     "city of Seattle's AHL club, becomes Coachella Valley."),
+     "city of Seattle's AHL club, becomes Coachella Valley. With the default roster on, the club slots that roster "
+     "gives to other clubs or new names (IF Björklöven on Mora IK's, Pustertal on Medvescak Zagreb's) show those "
+     "names too."),
     ('roster', f'{SEASON_LABEL} default roster',
      "Today's NHL in every new mode: all 32 teams, rosters, lines, ratings and the calendar.",
      "Modes that start from the default roster (Play Now, Season, Franchise, Be a Pro) get today's league: rosters, "

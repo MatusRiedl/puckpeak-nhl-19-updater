@@ -39,12 +39,15 @@ import functools
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
 import sys
+import unicodedata
 
 from . import art as art_mod, durable, eb, gamefiles, menus as menus_mod, textpack
+from .teams import TEAMS
 from .schema import parse_schema
 from .tdb import Database
 
@@ -113,6 +116,35 @@ NAMES = {
     'NHLCityName_VITA': ('Vita Hästen', 'Mora'), 'NHLTEAMNAME_VITA': ('HC Vita Hästen', 'Mora IK'),
     'NHLTEAMNAME_Abbr3_VITA': ('VIT', 'MORA'), 'TEAMLINE2_VITA': ('HC Vita Hästen', 'Mora IK'),
     'TXT_NICKNAME_VITA': ('Vita Hästen', 'Mora'), 'TXT_NICKNAME_ALT_VITA': ('Vita Hästen', 'Mora'),
+}
+
+# The other club slots an Update renames (rosterupdate.LEAGUE_PLAN: take-overs and fuzzy renames) get their loc texts
+# from the database served, not from NAMES: which club takes which free slot depends on the pack. The loc ids of a
+# slot are ROLE_<artabbr>, the role's letters in any case (NHLTEAMNAME_DORN, NHLTeamName_MIK), read from the loc
+# database (docs/notes/club-renames-loc.md).
+CLUB_ROLES = ('NHLCITYNAME', 'NHLTEAMNAME', 'NHLTEAMNAME_ABBR3', 'TEAMLINE1', 'TEAMLINE2', 'TXT_NICKNAME',
+              'TXT_NICKNAME_ALT', 'NICKLINE2', 'X_XLA_TEAM')
+# {club as the served database names it: {role: text}}. A slot that took another club (its abbreviation changed) gets
+# texts made from the database (club_texts) with these laid over; a slot that kept its club under a new name gets
+# only these, since the game's loc texts often already have the new name (KooKoo Kouvola, Grizzlys Wolfsburg) and the
+# database's are cut to its field width. A role left out keeps the slot's stock text.
+CLUB_LOC = {
+    'Motor České Budějovice': {'NHLCITYNAME': 'České Budějovice', 'NHLTEAMNAME': 'Motor České Budějovice',
+                               'TEAMLINE1': 'Motor', 'TEAMLINE2': 'České Budějovice', 'TXT_NICKNAME': 'Motor',
+                               'TXT_NICKNAME_ALT': 'Motor', 'NICKLINE2': 'Motor'},
+    'HC Falkensteiner Pustertal Wolfe': {'NHLCITYNAME': 'Pustertal', 'NHLTEAMNAME': 'HC Pustertal Wölfe',
+                                         'TEAMLINE1': ' ', 'TEAMLINE2': 'HC Pustertal Wölfe', 'TXT_NICKNAME': 'Wölfe',
+                                         'TXT_NICKNAME_ALT': 'Wölfe', 'NICKLINE2': 'Wölfe'},
+    'Djurgårdens IF': {'NHLCITYNAME': 'Djurgården', 'NHLTEAMNAME': 'Djurgårdens IF', 'TEAMLINE2': 'IF'},
+    'Frölunda HC': {'NHLTEAMNAME': 'Frölunda HC', 'TEAMLINE2': 'HC'},
+    'HYDRO Fehervar AV 19': {'NHLTEAMNAME': 'Hydro Fehérvár AV19', 'TEAMLINE2': 'Hydro Fehérvár AV19'},
+    'EC iDM Warmepumpen VSV': {'NHLTEAMNAME': 'EC iDM Wärmepumpen VSV', 'TEAMLINE1': 'EC iDM'},
+    'Brantford Bulldogs': {'NHLCITYNAME': 'Brantford', 'NHLTEAMNAME': 'Brantford Bulldogs', 'TEAMLINE1': 'Brantford'},
+    'Brampton Steelheads': {'NHLCITYNAME': 'Brampton', 'NHLTEAMNAME': 'Brampton Steelheads', 'TEAMLINE1': 'Brampton'},
+    'Lausanne HC': {'NHLTEAMNAME': 'Lausanne HC'},
+    'Soo Greyhounds': {'NHLTEAMNAME': 'Soo Greyhounds', 'TEAMLINE1': 'Soo'},
+    'Cape Breton Eagles': {'NHLTEAMNAME': 'Cape Breton Eagles', 'TEAMLINE2': 'Eagles', 'TXT_NICKNAME': 'Eagles',
+                           'TXT_NICKNAME_ALT': 'Eagles', 'NICKLINE2': 'Eagles'},
 }
 
 # The league layer. capdefs.brk (170 bytes, the league kernel's money table; the same rows as the table Legacy found
@@ -368,6 +400,81 @@ def names_strings(raw, meta):
     return {sid: new for sid, (_old, new) in NAMES.items()}
 
 
+def _club_key(name):
+    """Letters only, accents folded (rosterupdate._team_key)."""
+    return re.sub('[^a-z]', '', unicodedata.normalize('NFKD', name or '').encode('ascii', 'ignore').decode().lower())
+
+
+def _club_entry(name):
+    """CLUB_LOC's entry for a club as the database names it; a name cut to the field width matches the entry it starts."""
+    key = _club_key(name)
+    for club, entry in CLUB_LOC.items():
+        k = _club_key(club)
+        if key == k or len(key) >= 8 and k.startswith(key):
+            return entry
+    return None
+
+
+def club_texts(stock_teams, served_teams):
+    """{artabbr: {role: text}} for the club slots the served database renamed (teams rows {index: row}). A slot that
+    took another club (abbreviation changed): City Nick split from its name and city (else the whole name on line 2,
+    the city as nickname), CLUB_LOC laid over; one that kept its club: CLUB_LOC only, else nothing. Slots whose texts
+    NAMES sets (Utah, the AHL and Allsvenskan moves, the Vees) and slots without an artabbr are left out."""
+    fixed = {sid.rsplit('_', 1)[1].upper() for sid in NAMES if '_' in sid}
+    out = {}
+    for index, row in served_teams.items():
+        old = stock_teams.get(index)
+        art = (row.get('artabbr') or '').upper()   # the menus follow the slot's own art (the Vees' slot changes it)
+        if not old or not art or art in fixed or _clean(row['teamname']) == _clean(old['teamname']):
+            continue
+        entry = _club_entry(row['teamname'])
+        texts = {}
+        if row['abbrname'] != old['abbrname']:
+            name, city, abbr = _clean(row['teamname']), row['cityname'] or '', row['abbrname']
+            if city.startswith('$'):
+                city = ''
+            if city and name.startswith(city + ' '):
+                line1, line2, nick = city, name[len(city) + 1:], name[len(city) + 1:]
+            else:
+                line1, line2, nick = ' ', name, city or name
+            texts = {'NHLCITYNAME': city or name, 'NHLTEAMNAME': name, 'NHLTEAMNAME_ABBR3': abbr, 'X_XLA_TEAM': abbr,
+                     'TEAMLINE1': line1, 'TEAMLINE2': line2, 'TXT_NICKNAME': nick, 'TXT_NICKNAME_ALT': nick,
+                     'NICKLINE2': nick}
+        if entry:
+            texts.update(entry)
+        if texts:
+            if art in out:
+                raise PatchError(f'names layer: two renamed club slots show art {art}')
+            out[art] = texts
+    return out
+
+
+def club_strings(raw, meta, stock_teams, served_teams):
+    """The names layer's {stringid: text} for the club slots the served database renamed (club_texts), on the loc ids
+    the loc database has (a role a club has no id for is skipped), only where the text changes. A letter no loc text
+    uses (Č, ě: the fonts may lack it) is written without its accent."""
+    want = {f'{role}_{art}': text for art, texts in club_texts(stock_teams, served_teams).items()
+            for role, text in texts.items()}
+    if not want:
+        return {}
+    t = Database.parse(raw, parse_schema(meta))['LanguageStrings']
+    rows = [(t.get(r, 'stringid'), t.get(r, 'sourcetext') or '') for r in range(t.count)]
+    seen = set().union(*(set(text) for _sid, text in rows))
+
+    def shown(text):
+        return ''.join(c if c in seen else unicodedata.normalize('NFKD', c)[0] for c in text)
+    out = {}
+    for sid, old in rows:
+        text = want.get(sid.upper())
+        if text is not None and old != shown(text) and (old.strip() or text.strip()):   # a blank line stays as it is
+            out[sid] = shown(text)
+    return out
+
+
+def _team_rows(db):
+    return {r['index']: r for r in db[TEAMS].rows()}
+
+
 def capdefs_2026(raw, path=CAPDEFS_PATH):
     """capdefs.brk with the 2026-27 money table, after checking it holds the stock one."""
     rows = f'<{12 * len(ROWS_STOCK)}H'
@@ -599,6 +706,7 @@ def _build(game_dir, layers, pack=None, database=None, lang='eng_us', menus=None
     if unknown:
         raise PatchError(f'unknown layer(s): {", ".join(sorted(unknown))}')
     edits, info = {}, {}
+    checked = check_database(database, game_dir) if 'database' in layers and database is not None else None
     if 'text' in layers or 'names' in layers:
         db_path = textpack.loc_paths(lang)[0]
         archive = textpack._winner(game_dir, db_path)
@@ -617,7 +725,13 @@ def _build(game_dir, layers, pack=None, database=None, lang='eng_us', menus=None
         strings = {}
         if 'names' in layers:
             strings.update(names_strings(raw, meta))
-            info['names'] = {'strings': len(NAMES), 'file': lang}
+            clubs = {}
+            if checked is not None:  # the club slots that Update renamed (club_strings)
+                schema = parse_schema(gamefiles.schema_xml(game_dir)[0])
+                clubs = club_strings(raw, meta, _team_rows(Database.parse(gamefiles.default_database(game_dir)[0], schema)),
+                                     _team_rows(checked))
+                strings.update(clubs)
+            info['names'] = {'strings': len(NAMES) + len(clubs), 'clubs': len(clubs), 'file': lang}
         if 'text' in layers:
             pack = pack or textpack.load_pack(lang=lang)
             clash = sorted(set(pack['strings']) & set(strings))
@@ -635,7 +749,7 @@ def _build(game_dir, layers, pack=None, database=None, lang='eng_us', menus=None
     if 'database' in layers:
         if database is None:
             raise PatchError('database layer: no database given')
-        db = check_database(database, game_dir)
+        db = checked
         # the portrait flags follow the art served (art_mod.portrait_flags): the same database serves both ways
         schema = parse_schema(gamefiles.schema_xml(game_dir)[0])
         stock = Database.parse(gamefiles.default_database(game_dir)[0], schema)

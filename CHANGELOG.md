@@ -2,6 +2,22 @@
 
 What changed in each version, for players.
 
+## 0.93.0 (2026-11-13)
+
+### Fixed
+
+- **Club teams show their new names in the game.** Where the 2026 roster puts another club on a slot, the game's menus
+  now name it: IF Björklöven in the SHL, HC Pustertal Wölfe, Olimpija Ljubljana and Hockey Club Milano in the
+  ICEHL (EBEL), and the other leagues' new clubs. Clubs that only changed their spelling show the new one too
+  (Frölunda HC, Djurgårdens IF, Hydro Fehérvár AV19 and more). Press Patch with the roster switch on.
+- **The default roster has every league's 2026 clubs.** Patch without Update used to give the club leagues their
+  2018 teams and players; the roster inside the app now has the 2026 clubs of all leagues.
+
+### Changed
+
+- **World of Chel drop-in waits 5 minutes for players** before the puck drops (it was 60 seconds), and players who
+  search in that time join the game. It still starts as soon as everyone is READY. (Server side, live already.)
+
 ## 0.92.0 (2026-11-13)
 
 ### Added
