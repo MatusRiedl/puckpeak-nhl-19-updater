@@ -8,7 +8,7 @@ import threading
 import time
 import webbrowser
 
-from .. import APP_NAME, SITE, SITE_LABEL, TAGLINE, VERSION
+from .. import APP_NAME, BRAND, SITE, SITE_LABEL, SUBTITLE, TAGLINE, VERSION
 from . import startlog, startup, watchdog, webview2
 from .server import QUEUE, WEB
 
@@ -50,7 +50,7 @@ def missing_files():
 def meta():
     """What the header shows (the page's `meta`)."""
     return {'app': APP_NAME, 'app_name': APP_NAME, 'version': VERSION, 'tagline': TAGLINE, 'site_label': SITE_LABEL,
-            'site': SITE, 'title': [APP_NAME, 'NHL 19 on shadPS4', VERSION]}
+            'site': SITE, 'title': [BRAND, SUBTITLE, VERSION]}
 
 
 def build(game_dir=None, save_dir=None, reopen=True):

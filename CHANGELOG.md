@@ -2,6 +2,14 @@
 
 What changed in each version, for players.
 
+## 0.94.0 (2026-11-13)
+
+### Changed
+
+- **A new look at the top of the app**: the OVERTIME wordmark, brought to you by Puck Peak (the logo opens the site).
+- **This page and the quick start** now describe Overtime as what it is: one standalone PC app that installs NHL 19,
+  runs it on its own emulator build and takes you online. No separate shadPS4 setup, no port forwarding.
+
 ## 0.93.0 (2026-11-13)
 
 ### Fixed
@@ -75,7 +83,7 @@ What changed in each version, for players.
 - **World of Chel's PLAY menu has no Pro-Am tile**; the other three are centred.
 
 Patch progress and speed, by Kravickas
-([pull request 2](https://github.com/MatusRiedl/puckpeak-nhl-19-updater/pull/2)):
+([pull request 2](https://github.com/MatusRiedl/nhl19-pc-online-overtime/pull/2)):
 
 - **Patch's progress bar follows the time.** It used to jump between fixed points and stand still for minutes at 62 %
   and 65 % while the jerseys were made and the art was written. Patch now measures its work first and moves the bar

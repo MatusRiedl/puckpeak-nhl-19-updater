@@ -1,9 +1,9 @@
 <div align="center">
 
-# 🏒 Puck Peak Overtime for NHL 19
+# 🏒 OVERTIME: NHL 19 Online on PC
 
-### Online play and today's NHL for **NHL 19** on PS4 / shadPS4.
-*One click patches your game: 32 teams, the 2026-27 season and a community server to play on.*
+### Play **NHL 19** on your Windows PC, online again, with today's rosters.
+*One standalone app sets up the game, runs it and gets you into online matches. Brought to you by [Puck Peak](https://www.puckpeak.com).*
 
 [**⬇ Download the latest version**](../../releases/latest)
 &nbsp;·&nbsp; [Quick start](QUICKSTART.md) &nbsp;·&nbsp; [What's new](CHANGELOG.md)
@@ -12,32 +12,38 @@
 
 Questions, news and help: **[gg.puckpeak.com](https://gg.puckpeak.com)**
 
-<img src="docs/whats-new.png" width="720" alt="What is new in 0.10.0">
+<img src="docs/banner.png" width="720" alt="NHL 19 Online is here: native performance, standalone PC app">
 
 </div>
 
-## ✨ Highlights
+## ✨ What you get
 
-- 🌐 **Online again.** EA switched NHL 19's servers off. The game patch points NHL 19 at the Overtime community server,
-  so Online Versus and Online Shootout work again. The game downloads the current online roster by itself, so both players play the same
-  one.
-- 🎮 **Multiplayer (closed beta).** Host or join a lobby, the host picks Versus or Shootout and the match rules (Competitive, Full Sim,
-  Continuous OT, ...), and one press starts the game. You get ranks, a leaderboard, match history, lobby chat and an
-  in-game overlay.
-- 🏟 **32 teams.** The Seattle Kraken and Utah join the league: in Play Now, in Be a Pro (a career as a Kraken) and in a
-  32 Team Expansion Draft Franchise.
-- 🗓 **The real 2026-27 calendars.** The NHL, all 32 AHL clubs on their NHL parent's farm team, and the Liiga. They
-  travel with the roster into Franchise and Season, and show month by month in the app.
-- 👕 **NHL 27 kits and equipment.** 3D kits for all 32 teams, plus real sock tuck, pants, tape colours and goalie neck
-  guards.
-- 📸 **NHL.com photos and logos.** One optional pack, one Download button. A switch puts the game's own photos back.
-- ✏️ **A full Roster editor.** Players, numbers, ratings, lines, strategies, jerseys and gear, contracts and the salary
-  cap, and signing free agents. You can edit freely: Save stops only what would corrupt the roster or crash the game.
-- 🔒 **Safe.** Your game files are never changed, every save is backed up first, and **Unpatch** puts everything back.
-- 🔄 **Stays fresh.** It checks for new versions itself.
+- 🖥 **A standalone PC app.** Download one exe, point it at your NHL 19 (its folder or the PKG) and press
+  **Play NHL 19**. The app installs the game from a PKG if needed, downloads the emulator it plays on and keeps it
+  up to date. Nothing else to install or configure by hand.
+- ⚡ **Native performance.** NHL 19 runs on **Overtime Native**, our build of the shadPS4 emulator tuned for this game:
+  unlocked frame rate, 720p / 1080p / 1440p, borderless fullscreen, steadier frames. Kravickas's NHL 19 build is one
+  click away on the same card.
+- 🌐 **Online again.** EA switched NHL 19's servers off; Overtime runs a community server in Europe with a relay in
+  North America.
+  **World of CHEL** (drop-in 6s, 3s, clubs, Ones), **Versus**, **Shootout** and **Threes** work from the game's own
+  menus, with drop-in matchmaking.
+- 🎮 **Lobbies, ranks and leaderboards.** Host or join a lobby with a friend, the host picks Versus, Shootout or
+  Threes and the rules, both press Ready and the app starts the match. Every human game counts toward your rank, with match history, live matches,
+  lobby chat and a ping readout in the corner of the game.
+- 🏟 **32 teams and the 2026-27 season.** The Seattle Kraken and Utah in Play Now, Be a Pro and a 32 Team Expansion
+  Draft Franchise; up-to-date rosters for the NHL, AHL and the European leagues; the real NHL, AHL and Liiga calendars.
+  Online games download the current online roster by themselves.
+- 👕 **Today's look.** NHL 27 kits and equipment, NHL.com photos and logos, club logos and kits: optional packs, one
+  Download button each.
+- ✏️ **A full roster editor.** Players, numbers, ratings, lines, strategies, jerseys and gear, contracts and the
+  salary cap, free agents. Save stops only what would corrupt the roster or crash the game.
+- 🎛 **Controllers and keyboard.** Map any pad, or play on keyboard and mouse, from inside the app.
+- 🔒 **Safe.** Your game files are only read, every save is backed up first, and **Unpatch** puts everything back.
+  The app updates itself.
 
 <div align="center">
-<img src="docs/shot_patch.png" width="48%" alt="The Game patch tab: patched, online on the Overtime server"> <img src="docs/shot_multiplayer.png" width="48%" alt="The Multiplayer tab">
+<img src="docs/shot_patch.png" width="48%" alt="The Game patch tab"> <img src="docs/shot_multiplayer.png" width="48%" alt="The Multiplayer tab">
 <img src="docs/shot_roster.png" width="48%" alt="The Roster tab with the 2026-27 rosters"> <img src="docs/shot_lines.png" width="48%" alt="The Lines tab">
 <img src="docs/shot_jerseys.png" width="48%" alt="The Jerseys & gear tab"> <img src="docs/shot_calendar.png" width="48%" alt="The Calendar tab">
 <img src="docs/shot_office.png" width="48%" alt="The Front office tab"> <img src="docs/shot_update.png" width="48%" alt="The Update tab">
@@ -45,40 +51,41 @@ Questions, news and help: **[gg.puckpeak.com](https://gg.puckpeak.com)**
 
 ## 🚀 Get started
 
-1. Download `OvertimeNHL19.exe` (Windows 10 or 11) from the [release page](../../releases/latest). Windows SmartScreen
-   warns because the exe is not signed: choose **More info**, then **Run anyway**.
-2. In **Setup**, check that it found shadPS4 and NHL 19 (or pick them). In **Game patch**, press **Patch**.
-3. Start NHL 19 from shadPS4. That is all. **Unpatch** takes everything out again.
+1. Download `OvertimeNHL19.exe` (Windows 10 or 11) from the [release page](../../releases/latest) and start it.
+   Windows SmartScreen warns because the exe is not signed: choose **More info**, then **Run anyway**.
+2. **Setup → Find game**: pick your NHL 19 folder (its `eboot.bin`) or the game PKG. The app installs a PKG for you.
+3. **Game patch → Patch**, then the green **Play NHL 19** button. The first press downloads the emulator.
+4. For online play, sign in or sign up for ShadNet on the **Multiplayer** tab, then press PLAY in any online mode or
+   join a lobby.
 
-Step-by-step, with what you need first: [QUICKSTART.md](QUICKSTART.md).
+Step by step: [QUICKSTART.md](QUICKSTART.md).
 
 ## What you need
 
-- Your own NHL 19 dump: **CUSA11126, update 1.60**. The app refuses other versions.
-  The update can be merged into the game folder or sit beside it (`CUSA11126-patch` or `CUSA11126-UPDATE`).
-- **shadPS4**, any build ([QtLauncher](https://github.com/shadps4-emu/shadps4-qtlauncher/releases) is the usual way to get it).
-  The app finds it. **Boost performance** on Setup can also put NHL 19 on Kravickas's NHL 19 build
-  ([source](https://github.com/Kravickas/shadPS4/tree/a36a7671d3ecd71fde3b9f82016254dec99d2d84), GPL-2.0).
-- For online play: a **ShadNet** account, signed in inside shadPS4.
+- A Windows 10 or 11 PC with a graphics card that runs NHL 19 in shadPS4, and about 10 GB of free memory while playing.
+- Your own NHL 19: **CUSA11126 with update 1.60** (a game folder or the PKGs). The app refuses other versions.
+- A free **ShadNet** account for online play (made inside the app).
 
 ## How it works
 
 | Part | What it does |
 |---|---|
-| `overtime_roster/` | The desktop app **Overtime Roster** (pywebview + `web/`): setup, game patch, roster update and editor, multiplayer |
-| `overtime_core/` | The NHL 19 roster codec, schema, verify rules, calendars, art packs and the shadPS4 patch builder |
-| `patches/`, `client/` | The shadPS4 patch that points the game at the Overtime server, and the replacement connection texts |
+| `overtime_roster/` | The desktop app (pywebview + `web/`): setup, PKG install, emulator builds, game patch, roster update and editor, multiplayer |
+| `overtime_core/` | The NHL 19 roster codec, schema, verify rules, calendars, art packs and the patch builder |
+| `patches/`, `client/` | The game patch that points NHL 19 at the Overtime servers, and the replacement connection texts |
 | `packaging/` | The PyInstaller build of `OvertimeNHL19.exe` |
 
-The eboot patch goes into shadPS4's patch folder and the data changes into an overlay folder next to the game. The game
-folder itself is only ever read. The roster app reads the game's own data from your copy at runtime.
+The game patch and data changes go into overlay folders next to the game; the game folder itself is only ever read.
+The roster app reads the game's own data from your copy at runtime. The emulator builds the app downloads are
+GPL-2.0: Overtime Native's source is at [MatusRiedl/shadPS4](https://github.com/MatusRiedl/shadPS4/tree/overtime-nightly)
+(branch `overtime-nightly`), Kravickas's at [Kravickas/shadPS4](https://github.com/Kravickas/shadPS4).
 
 For developers: [AGENTS.md](AGENTS.md).
 
 ## What this project does not ship
 
-No game files, eboot, archives, certificates or extracted EA assets are in this repository. You need your own legally
-obtained copy of NHL 19.
+No game files, eboot, archives, certificates or extracted EA assets are in this repository or in the app. You need
+your own legally obtained copy of NHL 19.
 
 ## Disclaimer
 

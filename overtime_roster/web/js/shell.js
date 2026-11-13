@@ -14,7 +14,8 @@ export function Backdrop() {
   </div>`;
 }
 
-// the Puck Peak logo, the tagline with the site, and the title line as the game's breadcrumb
+// the OVERTIME wordmark | "brought to you by" the Puck Peak logo (owner 2026-11-13, mockup B in
+// docs/ui/mockups/branding.html), then the game line and the version
 // The green Play NHL 19 button, top right on every tab (owner 2026-11-11): grey until a game is found; it starts the
 // build chosen on Setup's Boost performance card. play: {can, text, why, progress} (shell.app)
 function PlayButton({ play }) {
@@ -32,10 +33,14 @@ export function Header({ meta, play }) {
   const [name, game, version] = meta.title || [meta.app_name, '', meta.version];
   return html`<header class="header">
     <${PlayButton} play=${play}/>
-    <img class="logo" src="img/logo.png" alt="Puck Peak" draggable="false" onClick=${() => call('open_site')}/>
-    <div class="tagline">${meta.tagline} · <a onClick=${() => call('open_site')}>${meta.site_label}</a></div>
-    <div class="crumb"><b>${name}<i class="dashes"></i></b><span class="sep">|</span><span class="light">${game}</span>
-      <span class="sep">|</span><span class="ver">version ${version}</span></div>
+    <div class="brand">
+      <div class="wordmark">${name}</div>
+      <div class="vsep"></div>
+      <div class="by" title=${meta.site_label} onClick=${() => call('open_site')}>Brought to you by
+        <img class="logo" src="img/logo.png" alt="Puck Peak" draggable="false"/></div>
+    </div>
+    <div><div class="crumb"><span class="light">${game}</span>
+      <span class="sep">|</span><span class="ver">version ${version}</span></div></div>
   </header>`;
 }
 

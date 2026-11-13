@@ -1,36 +1,35 @@
 # Quick start
 
-**Puck Peak Overtime** brings NHL 19 (PS4, played on shadPS4) back online and up to today: the Overtime community
-server, Seattle and Utah, the real 2026-27 calendars and a full roster editor. A free community project from
-[Puck Peak](https://www.puckpeak.com).
+**OVERTIME** is a standalone Windows app that plays **NHL 19** on your PC and brings it back online and up to today:
+community servers, World of CHEL, Versus, Shootout and Threes, Seattle and Utah, the 2026-27 rosters and calendars,
+and a full roster editor. A free community project, brought to you by [Puck Peak](https://www.puckpeak.com).
 
 ## You need
 
-- Windows 10 or 11, and a PC that runs NHL 19 in shadPS4 (about 10 GB of free memory while playing).
-- Your own NHL 19 dump: **CUSA11126, update 1.60**. The app refuses other versions.
-  The update can be merged into the game folder or sit beside it (`CUSA11126-patch` or `CUSA11126-UPDATE`).
-- **shadPS4**: any build. The usual way is [QtLauncher](https://github.com/shadps4-emu/shadps4-qtlauncher/releases) with a version
-  downloaded in it.
-- For online play: a **ShadNet** account, signed in inside shadPS4.
+- Windows 10 or 11, a graphics card that runs NHL 19 in shadPS4, and about 10 GB of free memory while playing.
+- Your own NHL 19: **CUSA11126 with update 1.60**, as a game folder or as the game PKG plus the 1.60 update PKG.
+  The app refuses other versions.
+- Nothing else: the app downloads the emulator it plays on. A shadPS4 you already have works too.
 
 ## Set up (once)
 
 1. Download `OvertimeNHL19.exe` from the [release page](../../releases/latest) and start it. Windows SmartScreen warns
    because it is not signed: choose **More info**, then **Run anyway**.
-2. **Setup**: the app finds shadPS4 and NHL 19. If it doesn't, pick your emulator folder or `shadPS4.exe`.
+2. **Setup → Find game**: pick NHL 19's `eboot.bin`, or the game PKG. From a PKG the app installs the game into a new
+   folder next to it; pick the 1.60 update PKG too and it goes beside the game.
 3. **Game patch**: press **Patch** and leave the switches as they are. Wait until it says "Patched".
-4. Optional: press **Download** on the "Photos, logos pack" card (about 155 MB, once) for real photos, logos and kits,
-   Utah and Seattle included. Then press **Patch** again.
-5. For online play: allow shadPS4 through Windows Firewall when it asks (private networks), and forward
-   **UDP port 3659** on your router to your PC.
+4. Optional: press **Download** on the packs you want (photos and logos, kits and gear), then **Patch** again.
+5. Optional: **Setup → Boost performance** picks the emulator build (Overtime Native is the default), the
+   resolution and the frame rate. **Settings** there maps your controller or keyboard.
 
 ## Play
 
-- **Offline**: start NHL 19 from shadPS4. Seattle and Utah are in Play Now, Be a Pro and the 32 Team Expansion Draft
-  Franchise.
-- **Online Versus / Online Shootout**: press PLAY in either. The game downloads the current online roster when yours is older.
-- **Multiplayer tab (closed beta)**: one player presses **Create lobby** and shares the code, the other joins with
-  it. The host picks Versus or Shootout and the rules, both press **Ready**, and the app starts the game.
+- Press the green **Play NHL 19** button at the top right. The first press downloads the emulator.
+- **Offline**: Seattle and Utah are in Play Now, Be a Pro and the 32 Team Expansion Draft Franchise.
+- **Online**: on the **Multiplayer** tab, sign in or sign up for ShadNet (free, once). Then in the game press PLAY in
+  World of CHEL, Online Versus, Shootout or Threes. The game downloads the current online roster when yours is older.
+- **Lobbies**: on the Multiplayer tab, one player creates a lobby and shares the code, the other joins with it. The
+  host picks Versus, Shootout or Threes and the rules, both press **Ready**, and the app starts the game.
 
 ## Edit your roster
 
@@ -42,7 +41,7 @@ server, Seattle and Utah, the real 2026-27 calendars and a full roster editor. A
 
 ## Undo
 
-Press **Unpatch** on the Game patch tab. NHL 19 and shadPS4 are back as they were. Your game files were never changed.
+Press **Unpatch** on the Game patch tab. NHL 19 is back as it was. Your game files were never changed.
 
 ## Help
 

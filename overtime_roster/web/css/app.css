@@ -48,11 +48,16 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
 .backdrop .streak.s2 { right: 22%; top: 72%; width: 220px; opacity: .7; }
 .backdrop .streak.s3 { left: 12%; top: 18%; width: 180px; opacity: .5; }
 
-/* --- header: the Puck Peak logo, tagline, and the title line as NHL 19's breadcrumb ----------------------------------- */
+/* --- header: the OVERTIME wordmark | "brought to you by" Puck Peak, then the game line ------------------------------- */
 .header { position: relative; z-index: 1; text-align: center; padding: 14px 0 4px; flex: none; }
-.header .logo { display: block; margin: 0 auto; height: 46px; cursor: pointer; filter: drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
-.header .tagline { margin-top: 5px; font-size: 13px; font-weight: 600; color: var(--text-2); }
-.header .tagline a { color: var(--accent); }
+.header .brand { display: inline-flex; align-items: center; gap: 22px; }
+.header .wordmark { font-family: var(--font-head); font-weight: 700; font-style: italic; font-size: 40px; line-height: 1;
+  letter-spacing: .08em; text-transform: uppercase; background: var(--metal); -webkit-background-clip: text;
+  background-clip: text; color: transparent; filter: drop-shadow(0 4px 10px rgba(0,0,0,.55)); user-select: none; }
+.header .vsep { width: 1px; height: 40px; background: var(--line-hi); }
+.header .by { text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--text-3); cursor: pointer; }
+.header .logo { display: block; height: 26px; margin-top: 4px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
 .crumb { display: inline-flex; align-items: baseline; gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--text-3); }
 .crumb b { position: relative; color: var(--text); font-family: var(--font-head); font-stretch: var(--head-stretch);
   font-style: var(--head-style); font-weight: 700; font-size: 14px; letter-spacing: .14em; text-transform: uppercase; }
@@ -65,9 +70,12 @@ a:hover { color: var(--accent-hi); text-decoration: underline; }
   background: linear-gradient(90deg, var(--accent) 0 2px, transparent 2px 6px, var(--accent) 6px 9px, transparent 9px 13px,
     var(--accent) 13px 17px, transparent 17px 21px, var(--accent) 21px 27px, transparent 27px 30px, var(--accent) 30px 36px); }
 .compact .header { padding: 6px 0 0; }
-.compact .header .logo { height: 26px; }
-.compact .header .tagline { display: none; }
-.compact .crumb { margin-top: 4px; }
+.compact .header .brand { gap: 12px; }
+.compact .header .wordmark { font-size: 22px; }
+.compact .header .vsep { height: 22px; }
+.compact .header .by { display: inline-flex; align-items: center; gap: 8px; font-size: 9.5px; }
+.compact .header .logo { height: 14px; margin-top: 0; }
+.compact .crumb { display: none; }
 /* the green Play NHL 19 button, top right on every tab; grey until a game is found */
 .playnow { position: absolute; top: 16px; right: 20px; z-index: 2; display: inline-flex; align-items: center; gap: 9px;
   height: 42px; padding: 0 20px 0 16px; border: 0; border-radius: 4px; overflow: hidden; cursor: default;
