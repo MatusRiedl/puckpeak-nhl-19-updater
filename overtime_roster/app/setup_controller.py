@@ -142,7 +142,8 @@ def _pack_text(row):
     return f'Not downloaded{size}. Press Download.'
 
 
-FPS_MOVE = 'fps120:'     # defaults_done entry: this data folder's 9999 -> 120 move is done (0.91.0)
+FPS_MOVE = 'fps60:'      # defaults_done entry: this data folder's 120 / 9999 -> 60 move is done (0.91.1; 0.91.0's
+                         # 9999 -> 120 move wrote 'fps120:')
 
 
 class SetupController(Part):
@@ -159,7 +160,7 @@ class SetupController(Part):
              'setup_play': 'setup_play', 'setup_build': 'setup_build', 'setup_build_update': 'setup_build_update',
              'setup_boost': 'setup_boost',
              'setup_boost_source': 'setup_boost_source', 'setup_resolution': 'setup_resolution',
-             'setup_framerate': 'setup_framerate',
+             'setup_framerate': 'setup_framerate', 'setup_everywhere': 'setup_everywhere',
              'setup_pkg_source': 'setup_pkg_source',
              'setup_emu_settings': 'emu_settings', 'setup_emu_settings_save': 'emu_settings_save',
              'setup_emu_input': 'emu_input', 'setup_emu_input_save': 'emu_input_save',
@@ -202,6 +203,7 @@ class SetupController(Part):
         self.defaults_done = [d for d in prefs.get('defaults_done') or [] if isinstance(d, str)]
         self.cpu = dict(CPU_IDLE)   # Check my CPU (cpucheck.py): the run and its last result, this session only
         self.resolution = prefs.get('resolution') if prefs.get('resolution') in xmlpatch.RESOLUTIONS else 1080
+        self.replays60 = prefs.get('replays60') is True     # Apply everywhere (0.91.1, off by default): 60 FPS replays
         gamesetup.set_display(prefs.get('display'))     # Game settings' display mode (default borderless)
         # Folders list: what the player set by hand ({'emulator': bool, 'game': bool, 'saves': bool, 'data': path,
         # 'cache': path (paths.cache_dir reads it from the settings itself)}); a
@@ -213,7 +215,8 @@ class SetupController(Part):
     def _remember(self):
         self.ctl.remember(setup={'emulator': self.emulator, 'skipped': self.skipped, 'boost': self.boost,
                                  'build': self.build, 'defaults_done': list(self.defaults_done),
-                                 'resolution': self.resolution, 'display': gamesetup.display_mode(),
+                                 'resolution': self.resolution, 'replays60': self.replays60,
+                                 'display': gamesetup.display_mode(),
                                  'custom': dict(self.custom),
                                  'server': {k: v for k, v in self.server.items() if v != SERVER.get(k)}})
 
@@ -224,8 +227,9 @@ class SetupController(Part):
         return xmlpatch.for_eboot(gamesetup.eboot_sha(getattr(self.ctl, 'game_dir', None)))
 
     def _xml(self):
-        return xmlpatch.with_resolution(xmlpatch.build(self.server['host'], self.server.get('nucleus_url'),
-                                                       self.features()), self.resolution)
+        return xmlpatch.with_replays60(xmlpatch.with_resolution(
+            xmlpatch.build(self.server['host'], self.server.get('nucleus_url'), self.features()), self.resolution),
+            self.replays60)
 
     def _wait(self):
         """True (and the Help bar says so) while another job runs."""
@@ -397,7 +401,7 @@ class SetupController(Part):
 
     def _defaults(self, found=None):
         """Game settings without Patch, once a game is found (owner 2026-11-11, 0.90.2): Readbacks Precise and Readback
-        linear images every time; PS4 Pro mode, Shader cache, Direct memory access, Frame rate 120 and DMem 3500 once
+        linear images every time; PS4 Pro mode, Shader cache, Direct memory access, Frame rate 60 and DMem 3500 once
         per data folder (emusettings.apply_defaults, FIRST_DEFAULTS).
         While the game runs or a match is set up, the next look does it."""
         f = found if found is not None else (self.found or {})
@@ -415,30 +419,31 @@ class SetupController(Part):
         if first:
             with self.ctl.lock:
                 self.defaults_done.append(key)
-                self.defaults_done.append(FPS_MOVE + key)   # a new folder starts at 120 already
+                self.defaults_done.append(FPS_MOVE + key)   # a new folder starts at 60 already
                 self._remember()
         if wrote:
             self.ctl.host.log(f"Game settings set without Patch: {', '.join(wrote)} ({user})")
         self._fps_move(user, key)
 
     def _fps_move(self, user, key):
-        """Once per data folder (0.91.0, owner 2026-11-12): Frame rate Unlocked (vblank 9999, the old first default)
-        becomes 120 fps, so players don't crash on 9999. Any other value stays; Unlocked picked again later stays too.
-        Refused while the game runs or a match is set up: the next look does it."""
+        """Once per data folder (0.91.1, owner 2026-11-13: "default setting to 60 fps"): Frame rate 120 (0.91.0's first
+        default) or Unlocked (9999, the one before) becomes 60 fps, after the Out of order flip IRQ crashes at 120
+        (docs/notes/crash-reports-20261110.md). A hand-set other value stays; 120 or Unlocked picked again later stays
+        too. Refused while the game runs or a match is set up: the next look does it."""
         if FPS_MOVE + key in self.defaults_done:
             return
         try:
-            moved = emusettings.frame_rate(user) == 9999
+            moved = emusettings.frame_rate(user) in (120, 9999)
             if moved:
-                emusettings.save(user, {emusettings.FPS_ID: 120}, self.resolution)
+                emusettings.save(user, {emusettings.FPS_ID: 60}, self.resolution)
         except emusettings.SettingsError as err:
-            self.ctl.host.log(f'Frame rate not moved to 120 fps now: {err}')
+            self.ctl.host.log(f'Frame rate not moved to 60 fps now: {err}')
             return
         with self.ctl.lock:
             self.defaults_done.append(FPS_MOVE + key)
             self._remember()
         if moved:
-            self.ctl.host.log(f'Frame rate: Unlocked (9999) is now 120 fps, once ({user}). Setup, Boost changes it.')
+            self.ctl.host.log(f'Frame rate is now 60 fps, once ({user}). Setup, Boost changes it.')
 
     def _first_assets(self, found):
         """A new install's first look that finds NHL 19 and the published packs (0.90.2, owner 2026-11-11): the team
@@ -1355,7 +1360,7 @@ class SetupController(Part):
         return {'build': self.build, 'builds': builds, 'playing': boost.build_of(emulator) or '',
                 'text': text, 'tone': tone, 'progress': part, 'can': not c.busy,
                 'can_update': cur['published'] and not c.busy and part is None,
-                'resolution': self.resolution, 'framerate': self._frame_rate(emulator),
+                'resolution': self.resolution, 'framerate': self._frame_rate(emulator), 'everywhere': self.replays60,
                 'news': '' if part is not None else news, 'upstream': upstream}
 
     @staticmethod
@@ -1514,7 +1519,8 @@ class SetupController(Part):
 
     def setup_framerate(self, value):
         """The Frame rate choice under Resolution (owner 2026-11-12, 0.91.0): 60, 120 or Unlocked (9999), shadPS4's vblank
-        in the game's own config file; the replays60 patch makes cutscenes and menus follow it. No Patch."""
+        in the game's own config file; with Apply everywhere on (setup_everywhere) replays, celebrations, cutscenes and
+        menus follow it too. No Patch."""
         user = self._emu_user()
         if not user:
             return {'error': 'Find NHL 19 in Setup first.'}
@@ -1529,6 +1535,39 @@ class SetupController(Part):
         shown = next(o['label'] for o in emusettings.BY_ID[emusettings.FPS_ID]['options'] if str(o['value']) == str(value))
         self.ctl.host.log(f'Frame rate: {shown}')
         self.ctl.say(f'Frame rate set to {shown}. NHL 19 uses it from its next start.', 'good')
+        self.ctl.changed('setup')
+        return {'ok': True}
+
+    def setup_everywhere(self, on):
+        """Apply everywhere, right of Frame rate (owner 2026-11-13, 0.91.1): off by default, the patch file keeps
+        Kravickas's 60 FPS replays block disabled and replays, celebrations, cutscenes and menus keep the game's own pace;
+        on (experimental: the Out of order flip IRQ crash, docs/notes/crash-reports-20261110.md, had the block on every
+        time) they follow the frame rate too. Each player's own (xmlpatch.LOCAL_ONLY_TITLES). Like Resolution: a patched game
+        takes it now, or at its next Play while shadPS4 runs; no Patch."""
+        on = bool(on)
+        with self.ctl.lock:
+            changed = on != self.replays60
+            self.replays60 = on
+            self._remember()
+        if not changed:
+            return {'ok': True}
+        self.ctl.host.log(f"Apply everywhere: {'on' if on else 'off'}")
+        try:
+            put = patch_ctl.refresh_network(self)
+        except (gamesetup.SetupError, OSError, ValueError) as err:
+            self.ctl.host.log(f'Apply everywhere was not put into the game: {err}')
+            put = None
+        if put in ('written', 'later', 'same'):
+            then = 'NHL 19 uses it from its next start.'
+        elif gamesetup.load_manifest() is None:
+            then = 'Patch the game to use it.'
+        else:
+            then = 'Patch the game again to use it.'
+        if on:
+            self.ctl.say('Apply everywhere on (experimental, NHL 19 might crash with "Out of order flip IRQ"): replays, '
+                         f'cutscenes and menus follow the frame rate. {then}', 'caution')
+        else:
+            self.ctl.say(f"Apply everywhere off: replays, cutscenes and menus keep the game's own pace. {then}", 'good')
         self.ctl.changed('setup')
         return {'ok': True}
 

@@ -16,7 +16,8 @@ loaded eboot only. `build` makes the file from the FEATURES table below; `build(
               (overlay.BAP_PATHS). Goes off with the switch (expansion32_off) (docs/notes/nhl19-32teams-re.md, run c2)
   replays60   replays, celebrations, cinematics and menus at 60 fps: the video-out flip rate is forced to every vblank
               (the game picks every 2nd there). By Kravickas, github.com/Kravickas/ps4_cheats PATCHES/NHL19.xml
-              (CUSA11116 v1.60); its sites are byte-identical in CUSA11126 v1.60 (docs/notes/boost-performance.md)
+              (CUSA11116 v1.60); its sites are byte-identical in CUSA11126 v1.60 (docs/notes/boost-performance.md).
+              Each player's own since 0.91.1 (LOCAL_ONLY_TITLES): Setup's Apply everywhere switch (with_replays60)
   res1440     render at 2560x1440 instead of 1920x1080, by Kravickas (same file, "Resolution 2560x1440 (16:9)"). Written
               off (isEnabled="false"); with_resolution switches it (the Setup tab's Resolution choice, with Additional
               DMem)
@@ -58,6 +59,7 @@ REDIRECTOR = '0x51DCCFF'
 NUCLEUS = ('0x526E089', '0x526E0A2', '0x526E0BA')
 E32_DEFAULT, E32_STOCK = '0x6F7963', 'C6051E2EC50500'
 BAP32_TITLE = 'BAP32: Seattle in Be a Pro'
+REPLAYS60_TITLE = '60 FPS replays (Kravickas)'
 RES1440_TITLE = 'Resolution 2560x1440 (Kravickas)'
 RES720_TITLE = 'Resolution 1280x720 (Kravickas)'
 THREES_REWARDS_TITLE = 'T1: not-found check on the Threes unlock lookup'
@@ -89,7 +91,7 @@ FEATURES = {
        (mov cl, [rbx+0xe467] at 0x385aa16). mov cl, 1 disables cert validation for the QoS coordinator link only. -->""",
         [('0x3C5AA16', 'B10190909090')]),
     'replays60': Feature(
-        '60 FPS replays (Kravickas)',
+        REPLAYS60_TITLE,
         """  <!-- By Kravickas (github.com/Kravickas/ps4_cheats, PATCHES/NHL19.xml "60 FPS replays", CUSA11116 v1.60; the same
        bytes in CUSA11126 v1.60). The video-out flip rate: mov ebx, 3 at 0x28ec8df -> mov ebx, 1 and the cmovl ebx, eax
        at 0x28ec8ef -> nop, so replays and the other 30 fps sequences flip every vblank. -->""",
@@ -367,6 +369,23 @@ def with_resolution(text, value):
     return out
 
 
+def replays60(text):
+    """Whether a patch file's 60 FPS replays block (replays60) is there and enabled."""
+    return any(b['enabled'] and b['name'] == REPLAYS60_TITLE for b in parse(text))
+
+
+def with_replays60(text, on):
+    """The patch file with its 60 FPS replays block on or off: Setup's Apply everywhere switch (owner 2026-11-13, 0.91.1;
+    off, replays, celebrations, cutscenes and menus keep the game's own pace). A file without the block comes back as
+    it is for off; asking on there is a PatchError (an earlier version's file: repoint brings it up)."""
+    want = 'true' if on else 'false'
+    out = re.sub(f'(<Metadata Name="{re.escape(REPLAYS60_TITLE)}"[^>]*?isEnabled=")(?:true|false)"', rf'\g<1>{want}"',
+                 text)
+    if replays60(out) != bool(on):
+        raise PatchError('the patch file has no 60 FPS replays block this tool can switch')
+    return out
+
+
 def _switched(text, e32, bap):
     """`text` (a build) with the 32-team switch / Be a Pro block as a patch file had them (patch_ctl.one_click)."""
     if not e32:
@@ -386,18 +405,21 @@ def repoint(text, host, nucleus_url=None, features=DEFAULT):
     nucleus = next((u for u in old['nucleus'] if u != own), None)
     newline = '\r\n' if '\r\n' in text else '\n'
     e32, bap, res = expansion32(text), bap32(text), resolution(text)
-    plain = with_resolution(text, 1080)
+    # the Apply everywhere switch; a file without the block (an earlier version's) gets today's default, on
+    r60 = replays60(text) or all(b['name'] != REPLAYS60_TITLE for b in parse(text))
+    plain = with_replays60(with_resolution(text, 1080), False)      # both sides compared with the block off
     same = False
     for known in (DEFAULT, NO_CROSSVENDOR) + EARLIER:
         try:
-            same = _switched(build(old['redirector'], nucleus, known, newline), e32, bap) == plain
+            same = with_replays60(_switched(build(old['redirector'], nucleus, known, newline), e32, bap), False) == plain
         except PatchError:
             same = False
         if same:
             break
     if not same:
         raise PatchError('the patch file is not the one this Overtime writes; Patch the game again')
-    return with_resolution(_switched(build(host, nucleus_url, features, newline=newline), e32, bap), res)
+    return with_replays60(with_resolution(_switched(build(host, nucleus_url, features, newline=newline), e32, bap),
+                                          res), r60)
 
 
 def for_eboot(sha256):
@@ -414,10 +436,12 @@ def has_crossvendor(text):
                for b in parse(text))
 
 
-# Blocks and lines that never reach the other game: the picture size (Setup's Resolution), Be a Pro (offline only, off
-# with the league switch), the Threes unlock guard (only a lookup that would crash changes), the WoC item unlock (menus
-# only) and the server's name (one lobby is one server, whatever name or address the app was given).
-LOCAL_ONLY_TITLES = (RES1440_TITLE, RES720_TITLE, BAP32_TITLE, THREES_REWARDS_TITLE, WOC_UNLOCK_TITLE)
+# Blocks and lines that never reach the other game: the picture size (Setup's Resolution), the 60 FPS replays flip rate
+# (Setup's Apply everywhere, 0.91.1: how often a frame is shown, like shadPS4's vblank, which players already mix
+# online), Be a Pro (offline only, off with the league switch), the Threes unlock guard (only a lookup that would crash
+# changes), the WoC item unlock (menus only) and the server's name (one lobby is one server, whatever name or address
+# the app was given).
+LOCAL_ONLY_TITLES = (RES1440_TITLE, RES720_TITLE, REPLAYS60_TITLE, BAP32_TITLE, THREES_REWARDS_TITLE, WOC_UNLOCK_TITLE)
 LOCAL_ONLY_LINES = (REDIRECTOR,) + NUCLEUS
 # Blocks both games must have (they count in netplay_fingerprint) that each game carries itself: the lobby recipe leaves
 # them out (the cross-vendor block alone is ~30 KB, near the server's 32 KiB per patch text) and the match patch takes

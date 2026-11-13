@@ -442,6 +442,39 @@ def test_repoint_keeps_the_resolution():
         assert xmlpatch.repoint(moved, 'ot.puckpeak.com', 'https://91.98.195.150/') == on
 
 
+def test_apply_everywhere_switches_the_60_fps_replays_block():
+    """owner 2026-11-13 (0.91.1): Apply everywhere off disables the 60 FPS replays block, on puts it back; on is the file
+    0.91.0 wrote, byte for byte; a file without the block stays as it is for off and refuses on."""
+    base = xmlpatch.build('ot.puckpeak.com', 'https://91.98.195.150/')
+    assert xmlpatch.replays60(base) and xmlpatch.with_replays60(base, True) == base
+    off = xmlpatch.with_replays60(base, False)
+    assert not xmlpatch.replays60(off) and xmlpatch.REPLAYS60_TITLE in off and xmlpatch.with_replays60(off, True) == base
+    assert [b['name'] for b in xmlpatch.parse(off)] == [b['name'] for b in xmlpatch.parse(base)]
+    assert xmlpatch.resolution(xmlpatch.with_replays60(xmlpatch.with_resolution(base, 1440), False)) == 1440
+    plain = xmlpatch.build('ot.puckpeak.com', 'https://91.98.195.150/', xmlpatch.EARLIER[0])     # no block
+    assert xmlpatch.with_replays60(plain, False) == plain
+    with pytest.raises(xmlpatch.PatchError):
+        xmlpatch.with_replays60(plain, True)
+
+
+def test_repoint_keeps_apply_everywhere():
+    nucleus = 'https://91.98.195.150/'
+    base = xmlpatch.build('ot.puckpeak.com', nucleus)
+    for value, on, e32 in ((v, o, e) for v in xmlpatch.RESOLUTIONS for o in (True, False) for e in (True, False)):
+        text = xmlpatch.with_replays60(xmlpatch.with_resolution(base, value), on)
+        text = text if e32 else xmlpatch.expansion32_off(text)
+        moved = xmlpatch.repoint(text, '192.168.1.15')
+        assert xmlpatch.replays60(moved) == on and xmlpatch.resolution(moved) == value
+        assert xmlpatch.expansion32(moved) == e32 and xmlpatch.targets(moved)['redirector'] == '192.168.1.15'
+        assert xmlpatch.repoint(moved, 'ot.puckpeak.com', nucleus) == text
+        gated = xmlpatch.repoint(text, 'ot.puckpeak.com', nucleus, features=xmlpatch.NO_CROSSVENDOR)
+        assert xmlpatch.replays60(gated) == on and xmlpatch.repoint(gated, 'ot.puckpeak.com', nucleus) == text
+    # every earlier version's file had the block on (or none at all): it comes up on, today's file
+    for features in xmlpatch.EARLIER:
+        new = xmlpatch.repoint(xmlpatch.build('ot.puckpeak.com', nucleus, features), 'ot.puckpeak.com', nucleus)
+        assert new == base
+
+
 def test_repoint_brings_a_0_70_7_or_0_80_0_file_up_with_its_resolution():
     nucleus = 'https://91.98.195.150/'
     for features, value in ((f, v) for f in xmlpatch.EARLIER[1:-1] for v in (1080, 1440)):
@@ -464,6 +497,7 @@ def test_netplay_fingerprint_counts_only_what_reaches_the_other_game():
     assert len(fp) == 20
     for value in xmlpatch.RESOLUTIONS:                                              # the picture size: local
         assert xmlpatch.netplay_fingerprint(xmlpatch.with_resolution(base, value)) == fp
+    assert xmlpatch.netplay_fingerprint(xmlpatch.with_replays60(base, False)) == fp    # Apply everywhere (0.91.1): local
     assert xmlpatch.netplay_fingerprint(xmlpatch.bap32_off(base)) == fp               # league switch off: Be a Pro only
     assert xmlpatch.netplay_fingerprint(xmlpatch.build('91.98.195.150')) == fp         # the same server by its address
     assert xmlpatch.netplay_fingerprint(base.replace('\r\n', '\n')) == fp

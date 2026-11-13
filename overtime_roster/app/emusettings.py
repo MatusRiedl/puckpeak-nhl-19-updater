@@ -91,8 +91,8 @@ FIELDS = [
        'delay, can tear.',
        options=_opts(('Mailbox', 'Mailbox (V-Sync)'), ('Fifo', 'FIFO (V-Sync)'), ('Immediate', 'Immediate (no V-Sync)'))),
     _f('Graphics', 'Video', 'GPU', 'vblank_frequency', 'Frame rate', 'select', 60,
-       "The game paces everything by this (shadPS4's vblank: 60, 120 or 9999 Hz), and Overtime's patch makes cutscenes "
-       "and menus follow it too. 60 is the console's; Unlocked plays smoothest. Online matches use yours "
+       "The game paces everything by this (shadPS4's vblank: 60, 120 or 9999 Hz); with Setup's Apply everywhere on, "
+       "replays, cutscenes and menus follow it too. 60 is the console's and the default. Online matches use yours "
        '(players on different frame rates play together fine).',
        options=_opts((60, '60 fps'), (120, '120 fps'), (9999, 'Unlocked'))),
     _f('Graphics', 'Video', 'GPU', 'window_width', 'Window width', 'number', 1280,
@@ -408,18 +408,18 @@ def _backup(path):
 
 # Written once per data folder after a game is found, without Patch (owner 2026-11-11, 0.90.2: "this should be default
 # for anyone after they locate a game ... people should be able to change it"); not locked, the player may change them
-# later. Vblank 120 (owner 2026-11-12, 0.91.0: the Frame rate choice starts at 120 fps; 9999 before); Additional DMem
+# later. Vblank 60 (owner 2026-11-13, 0.91.1: the Frame rate choice starts at 60 fps; 120 in 0.91.0, 9999 before); Additional DMem
 # only goes up (a bigger value stays).
 # The locked GPU keys (gamesetup.GPU_SETTINGS) are written at every look.
 FIRST_DEFAULTS = {('General', 'neo_mode'): True, ('Vulkan', 'pipeline_cache_enabled'): True,
-                  ('GPU', 'direct_memory_access_enabled'): True, ('GPU', 'vblank_frequency'): 120,
+                  ('GPU', 'direct_memory_access_enabled'): True, ('GPU', 'vblank_frequency'): 60,
                   ('General', gamesetup.DMEM_KEY): gamesetup.DMEM_1440}
 AT_LEAST = {('General', gamesetup.DMEM_KEY)}
 
 
 def apply_defaults(user_dir, first):
     """Readbacks Precise and readback linear images on (always), and with `first` the FIRST_DEFAULTS (PS4 Pro mode,
-    Shader cache, Direct memory access, Frame rate 120, Additional DMem 3500 MB or more), in the game's own config file, without Patch. A new file starts from config.json; the file before is backed up.
+    Shader cache, Direct memory access, Frame rate 60, Additional DMem 3500 MB or more), in the game's own config file, without Patch. A new file starts from config.json; the file before is backed up.
     Returns the keys written ([] when all were set already). SettingsError while the game runs, a match is set up or
     the file does not read."""
     if not gamesetup.is_data_dir(user_dir):

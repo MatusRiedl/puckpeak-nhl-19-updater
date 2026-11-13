@@ -240,9 +240,9 @@ def adopt_patch(setup):
     ctl = setup.ctl
     try:
         xml = setup._xml()
-        if gamesetup.adopt(tuple(xmlpatch.with_resolution(t, res) for t in (xml, xmlpatch.bap32_off(xml),
-                                                                             xmlpatch.expansion32_off(xml))
-                                 for res in xmlpatch.RESOLUTIONS)):
+        if gamesetup.adopt(tuple(xmlpatch.with_replays60(xmlpatch.with_resolution(t, res), r60)
+                                 for t in (xml, xmlpatch.bap32_off(xml), xmlpatch.expansion32_off(xml))
+                                 for res in xmlpatch.RESOLUTIONS for r60 in (True, False))):
             by = selfupdate.parse_version(ctl.prefs.get('patched_by'))
             if by is None or by < selfupdate.parse_version(VERSION):
                 ctl.remember(patched_by=VERSION)
@@ -872,6 +872,7 @@ def refresh_network(setup):
     try:
         new = xmlpatch.repoint(text, setup.server['host'], setup.server.get('nucleus_url'), setup.features())
         new = xmlpatch.with_resolution(new, getattr(setup, 'resolution', 1080))     # the Resolution choice
+        new = xmlpatch.with_replays60(new, getattr(setup, 'replays60', True))      # the Apply everywhere switch
     except xmlpatch.PatchError as err:
         setup.ctl.host.log(f'The server was not put into the patch file: {err}')
         return None

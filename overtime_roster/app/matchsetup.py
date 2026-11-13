@@ -177,8 +177,10 @@ def render(blocks, newline='\r\n'):
 
 def match_xml(r, own_text):
     """The patch this game plays the match with: the recipe's blocks, this player's shared-local ones (always this app's
-    own: a recipe's block of that name is dropped), then this player's local-only ones."""
-    blocks = [b for b in blocks_of(check(r)) if b['name'] not in xmlpatch.SHARED_LOCAL_TITLES]
+    own: a recipe's block of that name is dropped), then this player's local-only ones (a recipe's block of that name,
+    from an older host, is dropped too: 0.91.0 hosts send 60 FPS replays, each player's own since 0.91.1)."""
+    blocks = [b for b in blocks_of(check(r))
+              if b['name'] not in xmlpatch.SHARED_LOCAL_TITLES and b['name'] not in xmlpatch.LOCAL_ONLY_TITLES]
     return render(blocks + shared_blocks(own_text) + local_blocks(own_text))
 
 

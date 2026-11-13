@@ -2,6 +2,24 @@
 
 What changed in each version, for players.
 
+## 0.91.1 (2026-11-13)
+
+### Added
+
+- **Apply everywhere switch**, right of Frame rate on Setup's Boost card. Off (the default), Kravickas's 60 FPS
+  replays patch stays switched off in your patch file, and replays, celebrations, cutscenes and menus keep the game's
+  own pace. On, they follow your frame rate, as in 0.91.0. On is experimental: NHL 19 might close by itself during a
+  game (shadPS4's "Out of order flip IRQ" in `shad_log.txt`), and Setup says so next to the switch. No Patch needed:
+  NHL 19 uses it from its next start.
+
+### Changed
+
+- **Frame rate defaults to 60 FPS**, the console's. A Frame rate of 120 FPS or Unlocked moves to 60 FPS once with
+  this update; pick it again on the Boost card if you want it back.
+- **Each player picks their own.** The 60 FPS replays patch no longer counts in the online patch check, and in a lobby
+  match each game keeps its own switch instead of the host's. A lobby hosted on 0.91.0 refuses Ready from a player on
+  0.91.1 ("both update Overtime Roster"): update both.
+
 ## 0.91.0 (2026-11-13)
 
 ### Added

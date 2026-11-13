@@ -165,8 +165,10 @@ def test_patch_refused_for_wrong_game_and_running(sc, monkeypatch):
 def test_server_override_and_reset(sc):
     assert 'error' in sc.setup_set_server('ot.puckpeak.com', 'https://ot.puckpeak.com/')  # 24 > 23 / 22
     assert sc.setup_set_server('192.168.1.15') == {'ok': True}
-    # the test game's eboot.bin is not the v1.60 one: no cross-vendor block (xmlpatch.for_eboot)
-    assert sc._xml() == SC.xmlpatch.build('192.168.1.15', features=SC.xmlpatch.NO_CROSSVENDOR)
+    # the test game's eboot.bin is not the v1.60 one: no cross-vendor block (xmlpatch.for_eboot); Apply everywhere is
+    # off by default (0.91.1): the 60 FPS replays block disabled
+    assert sc._xml() == SC.xmlpatch.with_replays60(
+        SC.xmlpatch.build('192.168.1.15', features=SC.xmlpatch.NO_CROSSVENDOR), False)
     assert sc.ctl.prefs['setup']['server'] == {'host': '192.168.1.15', 'nucleus_url': None}
     sc.setup_set_server('')
     assert sc.server == SC.SERVER and sc.ctl.prefs['setup']['server'] == {}
@@ -1274,6 +1276,53 @@ def test_resolution_choice_takes_720_1080_1440_and_is_kept(sc):
     assert sc.ctl.prefs['setup']['resolution'] == 720 and SC.SetupController(sc.ctl).resolution == 720
 
 
+def test_apply_everywhere_switch_writes_the_patch_file_and_is_kept(sc):
+    """owner 2026-11-13 (0.91.1): Apply everywhere, right of Frame rate, off by default; off keeps the 60 FPS replays
+    block disabled in the patch file the Setup tab writes and in the patched game's (no Patch), on puts it back with a
+    warning (experimental); the next start keeps it."""
+    from overtime_roster.app import patch_ctl
+    assert not sc.replays60 and not SC.xmlpatch.replays60(sc._xml())   # off by default
+    assert sc.setup_everywhere(True) == {'ok': True}                   # not patched yet: Patch puts it in
+    assert sc.replays60 and SC.xmlpatch.replays60(sc._xml())
+    assert sc.ctl.said[-1] == ('Apply everywhere on (experimental, NHL 19 might crash with "Out of order flip IRQ"): '
+                               'replays, cutscenes and menus follow the frame rate. Patch the game to use it.', 'caution')
+    assert sc.ctl.prefs['setup']['replays60'] is True and SC.SetupController(sc.ctl).replays60
+    assert sc.setup_everywhere(False) == {'ok': True}
+    assert sc.ctl.said[-1] == ("Apply everywhere off: replays, cutscenes and menus keep the game's own pace. "
+                               'Patch the game to use it.', 'good')
+    assert sc.ctl.prefs['setup']['replays60'] is False and not SC.SetupController(sc.ctl).replays60
+    sc.setup_refresh()
+    sc.setup_patch()
+    emu = str(sc.world['emu'])
+    assert gamesetup.status(emu)['intact'] and not SC.xmlpatch.replays60(gamesetup.installed_patch())
+    assert sc.setup_everywhere(True) == {'ok': True}
+    assert gamesetup.status(emu)['intact'] and SC.xmlpatch.replays60(gamesetup.installed_patch())
+    assert sc.ctl.said[-1][0].endswith('NHL 19 uses it from its next start.') and sc.ctl.said[-1][1] == 'caution'
+    sc.setup_everywhere(False)
+    assert gamesetup.status(emu)['intact'] and not SC.xmlpatch.replays60(gamesetup.installed_patch())
+    assert patch_ctl.refresh_network(sc) == 'same'
+    said = len(sc.ctl.said)
+    assert sc.setup_everywhere(False) == {'ok': True} and len(sc.ctl.said) == said     # no change: nothing said
+
+
+def test_apply_everywhere_off_reaches_a_0910_patch_file_at_the_next_start(sc):
+    """A 0.91.0 player (the 60 FPS replays block on in the patched game, no replays60 pref) updates to 0.91.1: the
+    switch reads off, and the next start's refresh (Play, a lobby or matchmaking start: patch_ctl._refresh_before_start)
+    switches the block off in the patch file, without Patch."""
+    from overtime_roster.app import patch_ctl
+    sc.replays60 = True                 # 0.91.0 built every patch file with the block on
+    sc.setup_refresh()
+    sc.setup_patch()
+    emu = str(sc.world['emu'])
+    assert SC.xmlpatch.replays60(gamesetup.installed_patch())
+    sc.ctl.prefs['setup'].pop('replays60', None)    # 0.91.0 never saved the key
+    new = SC.SetupController(sc.ctl)
+    assert not new.replays60
+    assert patch_ctl._refresh_before_start(new) == 'written'
+    assert gamesetup.status(emu)['intact'] and not SC.xmlpatch.replays60(gamesetup.installed_patch())
+    assert patch_ctl.refresh_network(new) == 'same'
+
+
 def test_frame_rate_choice_saves_the_vblank(sc, monkeypatch):
     """owner 2026-11-12 (0.91.0): Frame rate 60 / 120 / Unlocked under Resolution writes shadPS4's vblank."""
     saved = []
@@ -1290,9 +1339,11 @@ def test_frame_rate_choice_saves_the_vblank(sc, monkeypatch):
     assert 'error' in sc.setup_framerate(60)
 
 
-def test_unlocked_9999_moves_to_120_once_per_data_folder(sc, monkeypatch):
-    """owner 2026-11-12 (0.91.0): players on vblank 9999 go to 120 fps once; Unlocked picked again later stays."""
-    rate, saved = {'v': 9999}, []
+def test_120_and_unlocked_move_to_60_once_per_data_folder(sc, monkeypatch):
+    """owner 2026-11-13 (0.91.1): players on 120 fps (0.91.0's default) or Unlocked go to 60 fps once; 120 or Unlocked
+    picked again later stays, and so does a hand-set other value."""
+    assert SC.FPS_MOVE == 'fps60:'                                      # not 0.91.0's 'fps120:': every folder moves once
+    rate, saved = {'v': 120}, []
     monkeypatch.setattr(SC.emusettings, 'frame_rate', lambda user: rate['v'])
     monkeypatch.setattr(SC.emusettings, 'save', lambda user, ch, res: saved.append(ch) or rate.update(v=ch[SC.emusettings.FPS_ID]))
 
@@ -1303,14 +1354,18 @@ def test_unlocked_9999_moves_to_120_once_per_data_folder(sc, monkeypatch):
     assert SC.FPS_MOVE + 'k' not in sc.defaults_done                     # the game ran: the next look does it
     monkeypatch.setattr(SC.emusettings, 'save', lambda user, ch, res: saved.append(ch) or rate.update(v=ch[SC.emusettings.FPS_ID]))
     sc._fps_move('U', 'k')
-    assert saved == [{'GPU.vblank_frequency': 120}] and SC.FPS_MOVE + 'k' in sc.defaults_done
+    assert saved == [{'GPU.vblank_frequency': 60}] and SC.FPS_MOVE + 'k' in sc.defaults_done
     assert SC.FPS_MOVE + 'k' in sc.ctl.prefs['setup']['defaults_done']
-    rate['v'] = 9999                                                    # the player picks Unlocked again
+    rate['v'] = 120                                                     # the player picks 120 again
     sc._fps_move('U', 'k')
     assert len(saved) == 1
-    rate['v'] = 60
-    sc._fps_move('U', 'other')                                          # 60 stays 60
-    assert len(saved) == 1 and SC.FPS_MOVE + 'other' in sc.defaults_done
+    rate['v'] = 9999
+    sc._fps_move('U', 'unlocked')                                       # another folder on Unlocked: 60 too
+    assert saved[-1] == {'GPU.vblank_frequency': 60} and len(saved) == 2
+    for value, folder in ((60, 'other'), (144, 'hand')):                # 60 stays 60, a hand-set value stays
+        rate['v'] = value
+        sc._fps_move('U', folder)
+        assert len(saved) == 2 and SC.FPS_MOVE + folder in sc.defaults_done
 
 
 def test_downloads_folder_set_by_hand_moves_the_cache_and_auto_moves_it_back(sc, tmp_path, monkeypatch):

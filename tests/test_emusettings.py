@@ -172,9 +172,9 @@ def test_defaults_without_patch_readbacks_always_pro_and_shader_cache_once(user,
     assert sorted(wrote) == ['GPU.direct_memory_access_enabled', 'GPU.readback_linear_images_enabled',
                              'GPU.readbacks_mode', 'GPU.vblank_frequency', 'General.extra_dmem_in_mbytes',
                              'General.neo_mode', 'Vulkan.pipeline_cache_enabled']
-    # owner 2026-11-11: direct memory access and DMem 3500 by default, not locked; 2026-11-12 (0.91.0): vblank 120
-    assert emusettings.frame_rate(str(user)) == 120
-    assert cfg['GPU']['vblank_frequency'] == 120 and cfg['GPU']['direct_memory_access_enabled'] is True
+    # owner 2026-11-11: direct memory access and DMem 3500 by default, not locked; 2026-11-13 (0.91.1): vblank 60
+    assert emusettings.frame_rate(str(user)) == 60
+    assert cfg['GPU']['vblank_frequency'] == 60 and cfg['GPU']['direct_memory_access_enabled'] is True
     assert cfg['General']['extra_dmem_in_mbytes'] == 3500
     assert not {'GPU.vblank_frequency', 'GPU.direct_memory_access_enabled', 'General.extra_dmem_in_mbytes'} & set(emusettings.locks())
     assert cfg['GPU']['readbacks_mode'] == 2 and cfg['GPU']['readback_linear_images_enabled'] is True
@@ -307,8 +307,8 @@ def test_a_look_that_finds_the_game_sets_the_defaults_once(sc, monkeypatch):  # 
     cfg = json.loads((user / 'custom_configs' / TITLE).read_text(encoding='utf-8'))
     assert cfg['GPU']['readbacks_mode'] == 2 and cfg['General']['neo_mode'] is True
     key = os.path.normcase(os.path.abspath(str(user)))
-    assert sc.ctl.prefs['setup']['defaults_done'] == [key, SC.FPS_MOVE + key]   # a new folder starts at 120
-    assert cfg['GPU']['vblank_frequency'] == 120
+    assert sc.ctl.prefs['setup']['defaults_done'] == [key, SC.FPS_MOVE + key]   # a new folder starts at 60
+    assert cfg['GPU']['vblank_frequency'] == 60
     cfg['General']['neo_mode'] = False                              # the player turns PS4 Pro mode off
     cfg['GPU']['readbacks_mode'] = 1
     (user / 'custom_configs' / TITLE).write_text(json.dumps(cfg), encoding='utf-8')

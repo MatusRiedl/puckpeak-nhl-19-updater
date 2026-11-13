@@ -77,6 +77,30 @@ def test_match_patch_carries_the_host_netplay_bytes_and_my_local_blocks():
     assert xmlpatch.resolution(MS.match_xml(MS.recipe(xmlpatch.with_resolution(host, 720)), host)) == 1080
 
 
+def test_match_patch_keeps_my_apply_everywhere_switch(monkeypatch):
+    """0.91.1: 60 FPS replays is each player's own (Setup's Apply everywhere): the recipe leaves it out and my match patch
+    has it as my own file has it, whatever the host's; a 0.91.0 host's recipe still carries it and does not turn mine
+    on (nor twice)."""
+    host = xmlpatch.build('ot.puckpeak.com', 'https://91.98.195.150/')
+    off = xmlpatch.with_replays60(host, False)
+    fp = xmlpatch.netplay_fingerprint(host)
+
+    def count(text):
+        return sum(b['name'] == xmlpatch.REPLAYS60_TITLE for b in xmlpatch.parse(text))
+
+    for r in (MS.recipe(host), MS.recipe(off)):
+        assert all(b['name'] != xmlpatch.REPLAYS60_TITLE for b in MS.blocks_of(r))
+        assert not xmlpatch.replays60(MS.match_xml(r, off)) and count(MS.match_xml(r, off)) == 0
+        assert xmlpatch.replays60(MS.match_xml(r, host)) and count(MS.match_xml(r, host)) == 1
+        assert xmlpatch.netplay_fingerprint(MS.match_xml(r, off)) == fp == xmlpatch.netplay_fingerprint(MS.match_xml(r, host))
+    with monkeypatch.context() as m:                    # a 0.91.0 host: the block was not local-only then
+        m.setattr(xmlpatch, 'LOCAL_ONLY_TITLES', tuple(t for t in xmlpatch.LOCAL_ONLY_TITLES
+                                                       if t != xmlpatch.REPLAYS60_TITLE))
+        old = MS.recipe(host)
+    assert any(b['name'] == xmlpatch.REPLAYS60_TITLE for b in MS.blocks_of(old))
+    assert not xmlpatch.replays60(MS.match_xml(old, off)) and count(MS.match_xml(old, host)) == 1
+
+
 def test_recipe_check_refuses_what_does_not_read():
     good = MS.recipe(xmlpatch.build('ot.puckpeak.com', 'https://91.98.195.150/'))
     MS.check(good)
